@@ -1,18 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-    Example 1
-    Single electron transistor with a dot in the orthodox model
-
-    Mathieu Pierre - january 2009
-    modif Benoit Roche - aout 2011, BV and XJ - nov 2012
-"""
-
-"""
-    Modified by Michael McConnell - September 2014
-"""
-
 try:
     import scipy
 except ImportError:
@@ -42,42 +30,6 @@ def system(Vg, Cs, Cd, Cg, Gs, Gd, num_e):
     #myset.add_link('dl', 'dot', 'drain', Cg, Gg)
     myset.add_link('dg', 'dot', 'gate', Cg)
     return myset
-
-def IVg(myset, T, Vg_start, Vg_end, Ng, Vd, filename=0):
-    """Compute the current for a sweep in gate voltage
-       Vg,I,P = IVg(myset, T, Vg_start, Vg_end, step, Vd, filename)
-       Inputs :
-           myset    : instance of SET class
-           T        : temperature (K)
-           Vg_start : initial value for the gate voltage (mV)
-           Vg_end   : final value for the gate voltage (mV)
-           Ng       : number of points
-           Vd       : drain bias (mV) - the source is grounded
-           filename : optional - if provided data will appened to that file
-       Outputs :
-           Vg : gate voltage
-           I  : current between drain and dot
-           P  : mean occupation of the dot
-    """
-    myset.set_temperature(T)
-    myset.pre_processing()
-    Vg = scipy.linspace(Vg_start, Vg_end, Ng)
-    I = []
-    P = []
-    for vg in Vg:
-        myset.tunnel_rate([0, Vd, vg])    
-        myset.solver() 
-        I.append(myset.current('drain', 'dot'))
-        P.append(myset.proba('dot'))
-    # convert lists to scipy arrays
-    I = scipy.array(I)
-    P = scipy.array(P)
-    if filename != 0:
-        data = create_array(Vg,I,P)
-        # convert from a scipy 2D array to a list of lines
-        data = map(list,list(data)) 
-        write_file(data,filename)
-    return Vg, I, P
 
 def derive(F, X):
     return scipy.diff(F)/abs(X[1]-X[0]), linspace(X[0], X[-1], len(X)-1)
@@ -166,58 +118,6 @@ def write_file(data,filename):
         f.write('\n')
     f.close()
 
-def create_array(*V):
-    """Take a finite number of python lists or numpy 1D arrays
-    and put them in columns into a 2D array.
-    They must have the same length.
-    """
-    data = scipy.zeros((len(V[0]),0))
-    for v in V:
-        v = scipy.array(v)
-        v = v[:,scipy.newaxis]
-        data = scipy.concatenate((data,v),1)
-    return data
-
-def plot_1D(x, y, params):
-    glog = params['glog']
-    gmax = params['gmax']
-    if gmax is None:
-        gmax = y.max()
-    
-    if params['neg_conductance']:
-        y = abs(y)
-    if glog is not None:
-        matplotlib.pyplot.semilogy(x, y, '.k')
-        matplotlib.pyplot.semilogy(x, y, '-k')
-        gmin=glog
-        matplotlib.pyplot.axis(ymin=gmin, ymax=gmax)
-    else:
-        matplotlib.pyplot.plot(x, y, '.k')
-        matplotlib.pyplot.plot(x, y, '-k')
-        gmin=-gmax
-        matplotlib.pyplot.axis('tight')
-    
-    if params['xlabel'] is None:
-        params['xlabel'] = params['var1_name']
-    if params['ylabel'] is None:
-        params['ylabel'] = params['data_label']
-    matplotlib.pyplot.xlabel(params['xlabel'])
-    matplotlib.pyplot.ylabel(params['ylabel'])
-
-def plot_2D(data_matrix, X, Y):
-    # Plot configuration
-    params = ReadData.rhombus.get_default_config()
-    params['xlabel'] = 'Vg (mV)'
-    params['ylabel'] = 'Vd (mV)'
-    params['gsym'] = True
-    params['glog'] = None
-    params['colorbar_display'] = True
-    params['axes'] = None
-    
-    print len(X), len(Y), X[0], X[-1], Y[0], Y[-1]
-    a = ReadData.rhombus.Data(data_matrix, len(X), len(Y), X[0], X[-1], Y[0], Y[-1])
-    ReadData.rhombus.plot_bis(a, params)
-
 if __name__ == "__main__": 
     Tinput=float(sys.argv[1])
     vds_start=float(sys.argv[2])
@@ -235,6 +135,6 @@ if __name__ == "__main__":
     
     
     if len(sys.argv)==14:
-        data_matrix, X, Y = diamond(Tinput, vg_start, vg_end, numVgpoints, vds_start, vds_end, numVdspoints, Cs, Cd, Cg, Gs, Gd, num_e, mode='difcon', dVg=False)
+        data_matrix, X, Y = diamond(Tinput, vg_start, vg_end, numVgpoints, vds_start, vds_end, numVdspoints, Cs, Cd, Cg, Gs, Gd, num_e, mode='difcon', dVg=False, filename='simData.dat')
     else:
         print "Error: not enough command line arguments"
