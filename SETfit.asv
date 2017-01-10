@@ -271,6 +271,7 @@ function SETfit()
         
         % Sort the plot elements
         sortPlotElements(dataAxis);
+        disp('sorted');
     end
     
     function simTab = newSimTab(parent)
@@ -842,18 +843,12 @@ end
 % plot itself is on the bottom
 function sortPlotElements(ax)
     
-    while true
-        for i = 1:length(ax.Children)
-            switch ax.Children(i).Type
-                case 'hggroup'
-                    uistack(ax.Children(i), 'top');
-                    continue;
-                case 'surface'
-                    uistack(ax.Children(i), 'bottom');
-                    continue;
-            end
-        end
-        break;
+    for i = 1:length(ax.Children)
+        switch ax.Children.type
+            case 'hggroup'
+            case 'surface'
+            otherwise
+                
     end
     
     
