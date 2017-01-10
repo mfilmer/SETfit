@@ -1,2 +1,5 @@
-*SETsimulator
+
+*.asv
+*.dat
+*SETsimulator/
 !SETsimulator/guidiamonds.py

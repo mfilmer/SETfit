@@ -1,7 +1,11 @@
 function SETfit()
     
+    %% User Parameters
+    python_path = 'C:\Python27_32\python.exe'
+    
     %% Constants
     q = 1.602e-19;          % Coulombs
+    G0 = 7.7480917346e-5;   % Conductance quantum in Siemens;
     
     %% Create the GUI
     % Create main figure
@@ -10,7 +14,7 @@ function SETfit()
     figCenter = figWidth/2;
     fig = figure('Position', [125,20,figWidth,figHeight]);
     fig.MenuBar = 'none';
-    
+    git 
     % Create the main panels
     bottomMargin = 100;         % Pixels
     dataPanel = uipanel(fig, 'Units', 'pixels', ...
@@ -290,8 +294,34 @@ function SETfit()
         xlabel(ax,'V_G [mV]');
         ylabel(ax,'V_D [mV]');
         
+        % Create simulation parameter panel and elements
+        simParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
+            'Position', [250,10,335,bottomMargin-15], 'Title', 'Simulation Parameters');
+        sim_cgBox = simEntryBox(simParamsPanel, 'Cg', 'aF', [100, 44, 35, 20]);
+        sim_csBox = simEntryBox(simParamsPanel, 'Cs', 'aF', [185, 44, 35, 20]);
+        sim_cdBox = simEntryBox(simParamsPanel, 'Cd', 'aF', [185, 14, 35, 20]);
+        sim_gsBox = simEntryBox(simParamsPanel, 'Gs', 'uS', [270, 44, 35, 20]);
+        sim_gdBox = simEntryBox(simParamsPanel, 'Gd', 'uS', [270, 14, 35, 20]);
+        sim_offsetBox = simEntryBox(simParamsPanel, '', 'mV', [100,14,35,20]);
+        uicontrol(simParamsPanel, 'Style', 'text', 'HorizontalAlignment', 'right', ...
+            'Units', 'pixels', 'Position', [100-40-2, 14-3, 40, 20], ...
+            'String', 'Offset:');
+        sim_offsetBox.String = '0';
+        sim_offsetBox.UserData.value = 0;
+        
+        runSimButton = uicontrol(simParamsPanel, 'Style', 'pushbutton', 'Units', 'pixels', ...
+            'Position', [10,19,40,40], 'String', 'Run', 'Callback', @runSimCB, ...
+            'Enable', 'off');
+        
         % Store appropriate handles in the tab's UserData
-        %simTab.UserData.handles.something = something;
+        simTab.UserData.h.axis = ax;
+        simTab.UserData.h.sim_cgBox = sim_cgBox;
+        simTab.UserData.h.sim_csBox = sim_csBox;
+        simTab.UserData.h.sim_cdBox = sim_cdBox;
+        simTab.UserData.h.sim_gsBox = sim_gsBox;
+        simTab.UserData.h.sim_gdBox = sim_gdBox;
+        simTab.UserData.h.sim_offsetBox = sim_offsetBox;
+        simTab.UserData.h.runSimButton = runSimButton;
         
         % Reorganize tabs
         allTabs(end) = simTab;
@@ -358,8 +388,45 @@ function SETfit()
         
         if ~strcmp(units, '')
             uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'left', ...
-            'Units', 'pixels', 'Position', [pVec(1)+pVec(3)+2, pVec(2)+lo, uw, h], ...
-            'String', units);
+                'Units', 'pixels', 'Position', [pVec(1)+pVec(3)+2, pVec(2)+lo, uw, h], ...
+                'String', units);
+        end
+    end
+    
+    function handle = simEntryBox(parent, label, units, pVec)
+        lw = 20;
+        uw = 20;
+        h = 20;
+        lo = -3;
+        
+        % Determine factor
+        factor = 1;
+        switch units
+            case 'aF'
+                factor = 1e-18;
+            case 'mV'
+                factor = 1e-3;
+            case 'uS'
+                factor = 1e-6;
+            otherwise
+                warning(['Unit ''' units ''' not recognized']);
+        end
+        
+        handle = uicontrol(parent, 'Style', 'edit', 'Units', 'pixels', ...
+            'Position', pVec, 'HorizontalAlignment', 'right', ...
+            'Callback', @simParametersChanged, 'Tag', label);
+        handle.UserData.value = 0;
+        handle.UserData.factor = factor;
+        if ~strcmp(label, '')
+            uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
+                'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2)+lo, lw, h], ...
+                'String', [label ':']);
+        end
+        
+        if ~strcmp(units, '')
+            uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'left', ...
+                'Units', 'pixels', 'Position', [pVec(1)+pVec(3)+2, pVec(2)+lo, uw, h], ...
+                'String', units);
         end
     end
     
@@ -444,7 +511,41 @@ function SETfit()
         redrawFittingLines();
     end
     
-    % Whenever one of the fitting parameters (Cg, Cs, etc is changed
+    % Whenever one of the simulation parameters (Cg, Cs, etc) is changed
+    function simParametersChanged(src, ~)
+        [num, status] = str2num(src.String);    %#ok
+        if status == 0
+            src.String = num2str(src.UserData.value/src.UserData.factor);
+            return;
+        end
+        
+        src.UserData.value = num * src.UserData.factor;
+        
+        h = src.Parent.Parent.Parent.UserData.h;
+        
+        % Determine if all 6 parameters have a value
+        state = true;
+        if h.sim_csBox.UserData.value <= 0
+            state = false;
+        elseif h.sim_cdBox.UserData.value <= 0
+            state = false;
+        elseif h.sim_cgBox.UserData.value <= 0
+            state = false;
+        elseif h.sim_gsBox.UserData.value <= 0
+            state = false;
+        elseif h.sim_gdBox.UserData.value <= 0
+            state = false;
+        end
+        
+        % Enable or disable the run simulation button as appropriate
+        if state
+            h.runSimButton.Enable = 'on';
+        else
+            h.runSimButton.Enable = 'off';
+        end
+    end
+    
+    % Whenever one of the fitting parameters (Cg, Cs, etc) is changed
     function fittingParametersChanged(src, ~)
         [num, status] = str2num(src.String);    %#ok
         if status == 0
@@ -454,7 +555,7 @@ function SETfit()
         
         src.UserData.value = num * src.UserData.factor;
         
-        % Determine if all 5 parameters have a value
+        % Determine if all 4 parameters have a value
         state = true;
         if csBox.UserData.value <= 0
             state = false;
@@ -482,6 +583,43 @@ function SETfit()
     % Called to copy the fitting parameters from the data window into a new
     % simulation tab
     function copyFitLinesCallback(src, eventdata)
+    end
+    
+    % Actually run the simulation
+    function runSimCB(src, ~)
+        h = src.Parent.Parent.Parent.UserData.h;
+        
+        vds_start = num2str(yminBox.UserData.value * 1e3);
+        vds_end = num2str(ymaxBox.UserData.value * 1e3);
+        numVdspoints = num2str(101);
+        Cs = num2str(h.sim_csBox.UserData.value);
+        Cd = num2str(h.sim_cdBox.UserData.value);
+        Gs = num2str(h.sim_gsBox.UserData.value/G0);
+        Gd = num2str(h.sim_gdBox.UserData.value/G0);
+        num_e = num2str(5);
+        vg_start = num2str(xminBox.UserData.value * 1e3);
+        vg_end = num2str(xmaxBox.UserData.value * 1e3);
+        numVgpoints = num2str(101);
+        Cg = num2str(h.sim_cgBox.UserData.value);
+        T = '0.3';
+        
+        
+        % Run the python simulator
+        command=[python_path ' SETsimulator\guidiamonds.py ' T ' ' vds_start ' ' vds_end ' '...
+            numVdspoints ' ' Cs ' ' Cd ' ' Gs ' ' Gd ' ' num_e ' '...
+            vg_start ' ' vg_end ' ' numVgpoints ' ' Cg];
+        [status,result]=system(command);
+        disp(['Simulation Output: ' result])
+        Z=load('simData.dat');
+        
+        xs = linspace(xminBox.UserData.value*1e3, xmaxBox.UserData.value*1e3, 101);
+        ys = linspace(yminBox.UserData.value*1e3, ymaxBox.UserData.value*1e3, 100);
+        [X,Y] = meshgrid(xs,ys);
+        
+        pcolor(h.axis, X, Y, Z/1e-6);
+        shading(h.axis, 'interp');
+        colormap(h.axis, 'jet');
+        colorbar(h.axis);
     end
     
     % Called to initiate manually draging the fit lines around
