@@ -710,11 +710,13 @@ function SETfit()
         
         % Only update the Cg box if the fit Cg checkbox is checked
         if fitCgCheckbox.Value
-                    oldCg = cgBox.UserData.value;
-        newCg = oldCg * newNum/oldNum;
-        
-        cgBox.UserData.value = newCg;
-        cgBox.String = newCg/cgBox.UserData.factor;
+            oldCg = cgBox.UserData.value;
+            newCg = oldCg * newNum/oldNum;
+            
+            cgBox.UserData.value = newCg;
+            cgBox.String = newCg/cgBox.UserData.factor;
+            
+            redrawFittingLines();
         end
     end
     
