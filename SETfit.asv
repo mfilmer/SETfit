@@ -271,7 +271,6 @@ function SETfit()
         
         % Sort the plot elements
         sortPlotElements(dataAxis);
-        disp('sorted');
     end
     
     function simTab = newSimTab(parent)
@@ -711,11 +710,32 @@ function SETfit()
         
         % Only update the Cg box if the fit Cg checkbox is checked
         if fitCgCheckbox.Value
-                    oldCg = cgBox.UserData.value;
-        newCg = oldCg * newNum/oldNum;
-        
-        cgBox.UserData.value = newCg;
-        cgBox.String = newCg/cgBox.UserData.factor;
+            oldCg = cgBox.UserData.value;
+            newCg = oldCg * newNum/oldNum;
+            
+            cgBox.UserData.value = newCg;
+            cgBox.String = newCg/cgBox.UserData.factor;
+            
+            % Calculate the new offset
+            newPos = fitCgCheckbox.UserData.fitline.getPosition();
+            
+            len = abs(newPos(2,1) - newPos(1,1))*xmaxBox.UserData.factor;
+            
+            cg = newNum*q/len;
+            cgBox.UserData.value = cg;
+            cgBox.String = num2str(cg/cgBox.UserData.factor, 3);
+            
+            x = newPos(1,1)*xmaxBox.UserData.factor;
+            dWidth = len/n;
+            offset = mod(x+dWidth/2,dWidth);
+            if abs(offset) > abs(offset - dWidth)
+                offset = offset - dWidth;
+            end
+            
+            offsetBox.UserData.value = offset;
+            offsetBox.String = num2str(offset/offsetBox.UserData.factor ,3);
+            
+            redrawFittingLines();
         end
     end
     
@@ -843,12 +863,18 @@ end
 % plot itself is on the bottom
 function sortPlotElements(ax)
     
-    for i = 1:length(ax.Children)
-        switch ax.Children.type
-            case 'hggroup'
-            case 'surface'
-            otherwise
-                
+    while true
+        for i = 1:length(ax.Children)
+            switch ax.Children(i).Type
+                case 'hggroup'
+                    uistack(ax.Children(i), 'top');
+                    continue;
+                case 'surface'
+                    uistack(ax.Children(i), 'bottom');
+                    continue;
+            end
+        end
+        break;
     end
     
     

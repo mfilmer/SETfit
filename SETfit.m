@@ -703,18 +703,32 @@ function SETfit()
         end
         
         newNum = round(num);
-        oldNum = src.UserData.value;
         
         src.String = num2str(newNum);
         src.UserData.value = newNum;
         
         % Only update the Cg box if the fit Cg checkbox is checked
         if fitCgCheckbox.Value
-            oldCg = cgBox.UserData.value;
-            newCg = oldCg * newNum/oldNum;
+            newPos = fitCgCheckbox.UserData.fitline.getPosition();
             
-            cgBox.UserData.value = newCg;
-            cgBox.String = newCg/cgBox.UserData.factor;
+            len = abs(newPos(2,1) - newPos(1,1))*xmaxBox.UserData.factor;
+            
+            cg = newNum*q/len;
+            cgBox.UserData.value = cg;
+            cgBox.String = num2str(cg/cgBox.UserData.factor, 3);
+            
+            x = newPos(1,1)*xmaxBox.UserData.factor;
+            dWidth = len/newNum;
+            offset = mod(x+dWidth/2,dWidth);
+            if abs(offset) > abs(offset - dWidth)
+                offset = offset - dWidth;
+            end
+            
+            offsetBox.UserData.value = offset;
+            offsetBox.String = num2str(offset/offsetBox.UserData.factor ,3);
+            
+            cgBox.UserData.value = cg;
+            cgBox.String = cg/cgBox.UserData.factor;
             
             redrawFittingLines();
         end
