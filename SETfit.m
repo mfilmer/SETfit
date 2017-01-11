@@ -1177,7 +1177,7 @@ function [xs, ys] = findLine(point, m, edges)
     ymin = edges(3);
     ymax = edges(4);
     
-    %% Check each of the 4 edges to find 2 points inside
+    % Check each of the 4 edges to find 2 points inside
     nPoints = 0;
     xs = [];
     ys = [];
