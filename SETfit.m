@@ -321,7 +321,7 @@ function SETfit()
         
         % Create simulation parameter panel and elements
         simParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
-            'Position', [250,10,335,bottomMargin-15], 'Title', 'Next Simulation Parameters');
+            'Position', [250,10,335,bottomMargin-15], 'Title', 'Next Simulation');
         sim_cgBox = simEntryBox(simParamsPanel, 'Cg', 'aF', [100, 44, 35, 20]);
         sim_csBox = simEntryBox(simParamsPanel, 'Cs', 'aF', [185, 44, 35, 20]);
         sim_cdBox = simEntryBox(simParamsPanel, 'Cd', 'aF', [185, 14, 35, 20]);
