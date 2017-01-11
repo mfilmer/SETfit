@@ -9,12 +9,12 @@ function SETfit()
     % nearly anyone who wants to use this.
     python_path = 'C:\Python27_32\python.exe';
     
+    % This is the path to the folder that holds all the simulation files.
+    simData_path = 'simulations';
+    
     %% System Parameters
     % Location of the simulator .py file
     simulator_path = 'SETsimulator\guidiamonds.py';
-    
-    % This is the path to the folder that holds all the simulation files.
-    simData_path = 'simulations';
     
     %% Constants
     q = 1.602e-19;          % Coulombs
@@ -307,9 +307,21 @@ function SETfit()
         xlabel(ax,'V_G [mV]');
         ylabel(ax,'V_D [mV]');
         
+        % Create a pannel to hold the previously ran simulation parameters
+        oldSimParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
+            'Position', [10,10,230,bottomMargin-15], 'Title', 'Current Simulation');
+        oldSim_temp = simLabelBox(oldSimParamsPanel, 'T', 'K', [55, 49, 35, 20]);
+        oldSim_offset = simLabelBox(oldSimParamsPanel, 'Off', 'mV', [55, 29, 35, 20]);
+        oldSim_cg = simLabelBox(oldSimParamsPanel, 'Cg', 'aF', [55, 9, 35, 20]);
+        oldSim_cs = simLabelBox(oldSimParamsPanel, 'Cs', 'aF', [125, 49, 35, 20]);
+        oldSim_cd = simLabelBox(oldSimParamsPanel, 'Cd', 'aF', [125, 29, 35, 20]);
+        oldSim_squ = simLabelBox(oldSimParamsPanel, 'Squ', '', [125, 9, 35, 20]);
+        oldSim_gs = simLabelBox(oldSimParamsPanel, 'Gs', 'uS', [195, 49, 35, 20]);
+        oldSim_gd = simLabelBox(oldSimParamsPanel, 'Gd', 'uS', [195, 29, 35, 20]);
+        
         % Create simulation parameter panel and elements
         simParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
-            'Position', [250,10,335,bottomMargin-15], 'Title', 'Simulation Parameters');
+            'Position', [250,10,335,bottomMargin-15], 'Title', 'Next Simulation Parameters');
         sim_cgBox = simEntryBox(simParamsPanel, 'Cg', 'aF', [100, 44, 35, 20]);
         sim_csBox = simEntryBox(simParamsPanel, 'Cs', 'aF', [185, 44, 35, 20]);
         sim_cdBox = simEntryBox(simParamsPanel, 'Cd', 'aF', [185, 14, 35, 20]);
@@ -339,6 +351,15 @@ function SETfit()
         simTab.UserData.h.sim_offsetBox = sim_offsetBox;
         simTab.UserData.h.sim_tempBox = sim_tempBox;
         simTab.UserData.h.runSimButton = runSimButton;
+        
+        simTab.UserData.h.oldSim_temp = oldSim_temp;
+        simTab.UserData.h.oldSim_offset = oldSim_offset;
+        simTab.UserData.h.oldSim_cg = oldSim_cg;
+        simTab.UserData.h.oldSim_cs = oldSim_cs;
+        simTab.UserData.h.oldSim_cd = oldSim_cd;
+        simTab.UserData.h.oldSim_squ = oldSim_squ;
+        simTab.UserData.h.oldSim_gs = oldSim_gs;
+        simTab.UserData.h.oldSim_gd = oldSim_gd;
         
         % Reorganize tabs
         allTabs(end) = simTab;
@@ -414,6 +435,27 @@ function SETfit()
         end
     end
     
+    function dataHandle = simLabelBox(parent, label, units, pVec)
+        lw = 50;
+        h = 20;
+        lo = -3;
+        
+        pVec(2) = pVec(2) + lo;
+        
+        dataHandle = uicontrol(parent, 'Style', 'text', 'Units', 'pixels', ...
+            'Position', pVec, 'HorizontalAlignment', 'left');
+        
+        if strcmp(units, '')
+            uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
+                'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, h], ...
+                'String', [label ': ']);
+        else
+            uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
+                'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, h], ...
+                'String', [label ' [' units ']' ': ']);
+        end
+    end
+    
     function handle = simEntryBox(parent, label, units, pVec)
         lw = 20;
         uw = 20;
@@ -458,10 +500,10 @@ function SETfit()
     function handleNewSimData(Z, h, tab, filename)
         % Plot the new data
         xs = linspace(xminBox.UserData.value*1e3, xmaxBox.UserData.value*1e3, 101);
-        ys = linspace(yminBox.UserData.value*1e3, ymaxBox.UserData.value*1e3, 100);
+        ys = linspace(yminBox.UserData.value*1e3, ymaxBox.UserData.value*1e3, 101);
         [X,Y] = meshgrid(xs,ys);
         
-        pcolor(h.axis, X, Y, Z/1e-6);
+        pcolor(h.axis, X, Y, Z/zmaxBox.UserData.factor);
         shading(h.axis, 'interp');
         colormap(h.axis, 'jet');
         colorbar(h.axis);
@@ -487,6 +529,24 @@ function SETfit()
         data.offset = h.sim_offsetBox.UserData.value;
         data.temp = h.sim_tempBox.UserData.value;   %#ok  it is saved on the next line
         save(mfile, '-struct', 'data');
+        
+        % Update the old simulation labels
+        h.oldSim_cg.String = num2str(h.sim_cgBox.UserData.value/h.sim_cgBox.UserData.factor,3);
+        h.oldSim_cs.String = num2str(h.sim_csBox.UserData.value/h.sim_csBox.UserData.factor,3);
+        h.oldSim_cd.String = num2str(h.sim_cdBox.UserData.value/h.sim_cdBox.UserData.factor,3);
+        h.oldSim_gs.String = num2str(h.sim_gsBox.UserData.value/h.sim_gsBox.UserData.factor,3);
+        h.oldSim_gd.String = num2str(h.sim_gdBox.UserData.value/h.sim_gdBox.UserData.factor,3);
+        h.oldSim_temp.String = num2str(h.sim_tempBox.UserData.value/h.sim_tempBox.UserData.factor,3);
+        h.oldSim_offset.String = num2str(h.sim_offsetBox.UserData.value/h.sim_offsetBox.UserData.factor,3);
+        
+        % Calculate sum of residual squares
+        if isstruct(dataAxis.UserData)
+            zfactor = zmaxBox.UserData.factor;
+            squ = calcSquares(dataAxis.UserData.Z/zfactor, Z/zfactor);
+            h.oldSim_squ.String = num2str(squ,3);
+        else
+            h.oldSim_squ.String = '';
+        end
     end
     
     %% Callback Functions
@@ -601,8 +661,14 @@ function SETfit()
     % Called to copy the fitting parameters from the data window into a new
     % simulation tab
     function copyFitLinesCB(~, ~)
-        newTab = newSimTab(simTabGroup);
-        h = newTab.UserData.h;
+        % Create a new tab and copy data into it
+        % I think this is not the best way to do this
+        %newTab = newSimTab(simTabGroup);
+        %h = newTab.UserData.h;
+        
+        % Copy data into currently active tab
+        thisTab = simTabGroup.SelectedTab;
+        h = thisTab.UserData.h;
         
         % Copy over all the data we need
         copyBox(cgBox, h.sim_cgBox);
@@ -610,9 +676,12 @@ function SETfit()
         copyBox(cdBox, h.sim_cdBox);
         copyBox(offsetBox, h.sim_offsetBox);
         
+        % Copy data but only if something has been entered into that box
         function copyBox(src, dest)
-            dest.UserData.value = src.UserData.value;
-            dest.String = num2str(dest.UserData.value/dest.UserData.factor);
+            if ~strcmp(src.String, '')
+                dest.UserData.value = src.UserData.value;
+                dest.String = num2str(dest.UserData.value/dest.UserData.factor);
+            end
         end
         
         enableDisableRunButton(h);
@@ -671,11 +740,15 @@ function SETfit()
     function runSimCB(src, ~)
         h = src.Parent.Parent.Parent.UserData.h;
         
+        % Disable simulation parameters while the sim is running
+        enableDisableSimParams(h, 'off');
+        drawnow;
+        
         offset = h.sim_offsetBox.UserData.value;
         
         vds_start = num2str(yminBox.UserData.value * 1e3);
         vds_end = num2str(ymaxBox.UserData.value * 1e3);
-        numVdspoints = num2str(101);
+        numVdspoints = num2str(101 + 1);    % Note, for some reason the simulator runs one less point than requested for this parameter
         Cs = num2str(h.sim_csBox.UserData.value);
         Cd = num2str(h.sim_cdBox.UserData.value);
         Gs = num2str(h.sim_gsBox.UserData.value/G0);
@@ -698,6 +771,9 @@ function SETfit()
         Z = load(fullfile(simData_path, datfile));
         
         handleNewSimData(Z, h, src, filename);
+        
+        % Re-enable the sim parameters
+        enableDisableSimParams(h, 'on');
     end
     
     % Called to initiate manually draging the fit lines around
@@ -1101,3 +1177,37 @@ function filename = makeFileName()
     filename = datestr(datetime(), 'yyyymmmdd_HH.MM.SS');
 end
 
+% Calculate the sum of the squared residuals between two datasets.
+% If they are of different sizes, Z2 is resampled to match Z1. Therefore,
+% Z1 should generally be the measured data and Z2 the simulation data.
+function S = calcSquares(Z1, Z2)
+    nx1 = size(Z1, 2);
+    ny1 = size(Z1, 1);
+    nx2 = size(Z2, 2);
+    ny2 = size(Z2, 1);
+    
+    xs1 = linspace(0,1,nx1);
+    ys1 = linspace(0,1,ny1);
+    xs2 = linspace(0,1,nx2);
+    ys2 = linspace(0,1,ny2);
+    [X1, Y1] = meshgrid(xs1, ys1);
+    [X2, Y2] = meshgrid(xs2, ys2);
+    
+    Z2_interp = interp2(X2, Y2, Z2, X1, Y1);
+    
+    r = (Z1-Z2_interp).^2;
+    S = sum(sum(r));
+end
+
+% Set the simulation parameter ui elements either enabled or disabled
+% according to the state variable
+function enableDisableSimParams(h, state)
+    h.sim_cgBox.Enable = state;
+    h.sim_csBox.Enable = state;
+    h.sim_cdBox.Enable = state;
+    h.sim_gsBox.Enable = state;
+    h.sim_gdBox.Enable = state;
+    h.sim_offsetBox.Enable = state;
+    h.sim_tempBox.Enable = state;
+    h.runSimButton.Enable = state;
+end
