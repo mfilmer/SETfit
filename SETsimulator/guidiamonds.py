@@ -119,22 +119,23 @@ def write_file(data,filename):
     f.close()
 
 if __name__ == "__main__": 
-    Tinput=float(sys.argv[1])
-    vds_start=float(sys.argv[2])
-    vds_end=float(sys.argv[3])
-    numVdspoints=int(sys.argv[4])
-    Cs=float(sys.argv[5])
-    Cd=float(sys.argv[6])
-    Gs=float(sys.argv[7])
-    Gd=float(sys.argv[8])
-    num_e=int(sys.argv[9])
-    vg_start=float(sys.argv[10])
-    vg_end=float(sys.argv[11])
-    numVgpoints=int(sys.argv[12])
-    Cg=float(sys.argv[13])
+    Tinput = float(sys.argv[1])
+    vds_start = float(sys.argv[2])
+    vds_end = float(sys.argv[3])
+    numVdspoints = int(sys.argv[4])
+    Cs = float(sys.argv[5])
+    Cd = float(sys.argv[6])
+    Gs = float(sys.argv[7])
+    Gd = float(sys.argv[8])
+    num_e = int(sys.argv[9])
+    vg_start = float(sys.argv[10])
+    vg_end = float(sys.argv[11])
+    numVgpoints = int(sys.argv[12])
+    Cg = float(sys.argv[13])
+    savefile = sys.argv[14]
     
     
-    if len(sys.argv)==14:
-        data_matrix, X, Y = diamond(Tinput, vg_start, vg_end, numVgpoints, vds_start, vds_end, numVdspoints, Cs, Cd, Cg, Gs, Gd, num_e, mode='difcon', dVg=False, filename='simData.dat')
+    if len(sys.argv) == 15:
+        data_matrix, X, Y = diamond(Tinput, vg_start, vg_end, numVgpoints, vds_start, vds_end, numVdspoints, Cs, Cd, Cg, Gs, Gd, num_e, mode='difcon', dVg=False, filename=savefile)
     else:
-        print "Error: not enough command line arguments"
+        print "Error: Wrong number of command line arguments"

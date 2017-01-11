@@ -1,7 +1,20 @@
 function SETfit()
     
     %% User Parameters
-    python_path = 'C:\Python27_32\python.exe'
+    % Location of the python.exe executable on your system. It is likely in
+    % python_path = 'C:\Python24\python.exe';
+    % Or if it is on your system's path you can just use
+    % python_path = 'python.exe';
+    % I have a nonstandard install location, this should be changed for
+    % nearly anyone who wants to use this.
+    python_path = 'C:\Python27_32\python.exe';
+    
+    %% System Parameters
+    % Location of the simulator .py file
+    simulator_path = 'SETsimulator\guidiamonds.py';
+    
+    % This is the path to the folder that holds all the simulation files.
+    simData_path = 'simulations';
     
     %% Constants
     q = 1.602e-19;          % Coulombs
@@ -14,7 +27,7 @@ function SETfit()
     figCenter = figWidth/2;
     fig = figure('Position', [125,20,figWidth,figHeight]);
     fig.MenuBar = 'none';
-    git 
+    
     % Create the main panels
     bottomMargin = 100;         % Pixels
     dataPanel = uipanel(fig, 'Units', 'pixels', ...
@@ -303,6 +316,9 @@ function SETfit()
         sim_gsBox = simEntryBox(simParamsPanel, 'Gs', 'uS', [270, 44, 35, 20]);
         sim_gdBox = simEntryBox(simParamsPanel, 'Gd', 'uS', [270, 14, 35, 20]);
         sim_offsetBox = simEntryBox(simParamsPanel, '', 'mV', [100,14,35,20]);
+        sim_tempBox = simEntryBox(simParamsPanel, 'T', 'K', [15,44,35,20]);
+        sim_tempBox.UserData.value = 0.3;
+        sim_tempBox.String = '0.3';
         uicontrol(simParamsPanel, 'Style', 'text', 'HorizontalAlignment', 'right', ...
             'Units', 'pixels', 'Position', [100-40-2, 14-3, 40, 20], ...
             'String', 'Offset:');
@@ -310,7 +326,7 @@ function SETfit()
         sim_offsetBox.UserData.value = 0;
         
         runSimButton = uicontrol(simParamsPanel, 'Style', 'pushbutton', 'Units', 'pixels', ...
-            'Position', [10,19,40,40], 'String', 'Run', 'Callback', @runSimCB, ...
+            'Position', [10,14,40,20], 'String', 'Run', 'Callback', @runSimCB, ...
             'Enable', 'off');
         
         % Store appropriate handles in the tab's UserData
@@ -321,6 +337,7 @@ function SETfit()
         simTab.UserData.h.sim_gsBox = sim_gsBox;
         simTab.UserData.h.sim_gdBox = sim_gdBox;
         simTab.UserData.h.sim_offsetBox = sim_offsetBox;
+        simTab.UserData.h.sim_tempBox = sim_tempBox;
         simTab.UserData.h.runSimButton = runSimButton;
         
         % Reorganize tabs
@@ -345,6 +362,8 @@ function SETfit()
                 factor = 1e-3;
             case 'uS'
                 factor = 1e-6;
+            case 'K'
+                factor = 1;
             otherwise
                 warning(['Unit ''' units ''' not recognized']);
         end
@@ -352,7 +371,7 @@ function SETfit()
         handle = uicontrol(parent, 'Style', 'edit', 'String', num2str(value), ...
             'Units', 'pixels', 'Callback', @axisLimitsChangedCB,  'Enable', 'off', ...
             'Position', pVec, 'Tag', tag);
-        handle.UserData.value = value;
+        handle.UserData.value = value*factor;
         handle.UserData.factor = factor;
     end
     
@@ -371,6 +390,8 @@ function SETfit()
                 factor = 1e-3;
             case 'uS'
                 factor = 1e-6;
+            case 'K'
+                factor = 1;
             otherwise
                 warning(['Unit ''' units ''' not recognized']);
         end
@@ -408,6 +429,8 @@ function SETfit()
                 factor = 1e-3;
             case 'uS'
                 factor = 1e-6;
+            case 'K'
+                factor = 1;
             otherwise
                 warning(['Unit ''' units ''' not recognized']);
         end
@@ -428,6 +451,42 @@ function SETfit()
                 'Units', 'pixels', 'Position', [pVec(1)+pVec(3)+2, pVec(2)+lo, uw, h], ...
                 'String', units);
         end
+    end
+    
+    % Handle the new simulation data. This includes deleting some old files if
+    % they were overwritten
+    function handleNewSimData(Z, h, tab, filename)
+        % Plot the new data
+        xs = linspace(xminBox.UserData.value*1e3, xmaxBox.UserData.value*1e3, 101);
+        ys = linspace(yminBox.UserData.value*1e3, ymaxBox.UserData.value*1e3, 100);
+        [X,Y] = meshgrid(xs,ys);
+        
+        pcolor(h.axis, X, Y, Z/1e-6);
+        shading(h.axis, 'interp');
+        colormap(h.axis, 'jet');
+        colorbar(h.axis);
+        
+        % Delete the old file if one exists
+        if isfield(tab.UserData, 'filename')
+            oldFilename = tab.UserData.filename;
+            mfile = fullfile(simData_path, [oldFilename '.m']);
+            datfile = fullfile(simData_path, [oldFilename '.dat']);
+            delete(mfile, datfile);
+        end
+        
+        % Store new file information
+        tab.UserData.filename = filename;
+        mfile = fullfile(simData_path, [filename '.m']);
+        
+        % Save .m file of simulation parameters
+        data.cg = h.sim_cgBox.UserData.value;
+        data.cs = h.sim_csBox.UserData.value;
+        data.cd = h.sim_cdBox.UserData.value;
+        data.gs = h.sim_gsBox.UserData.value;
+        data.gd = h.sim_gdBox.UserData.value;
+        data.offset = h.sim_offsetBox.UserData.value;
+        data.temp = h.sim_tempBox.UserData.value;   %#ok  it is saved on the next line
+        save(mfile, '-struct', 'data');
     end
     
     %% Callback Functions
@@ -601,25 +660,19 @@ function SETfit()
         vg_end = num2str(xmaxBox.UserData.value * 1e3);
         numVgpoints = num2str(101);
         Cg = num2str(h.sim_cgBox.UserData.value);
-        T = '0.3';
-        
+        T = num2str(h.sim_tempBox.UserData.value);
         
         % Run the python simulator
-        command=[python_path ' SETsimulator\guidiamonds.py ' T ' ' vds_start ' ' vds_end ' '...
+        filename = makeFileName();
+        datfile = [filename '.dat'];
+        command=[python_path ' ' simulator_path ' ' T ' ' vds_start ' ' vds_end ' ' ...
             numVdspoints ' ' Cs ' ' Cd ' ' Gs ' ' Gd ' ' num_e ' '...
-            vg_start ' ' vg_end ' ' numVgpoints ' ' Cg];
-        [status,result]=system(command);
+            vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' ' fullfile(simData_path, datfile)];
+        [~,result]=system(command);
         disp(['Simulation Output: ' result])
-        Z=load('simData.dat');
+        Z = load(fullfile(simData_path, datfile));
         
-        xs = linspace(xminBox.UserData.value*1e3, xmaxBox.UserData.value*1e3, 101);
-        ys = linspace(yminBox.UserData.value*1e3, ymaxBox.UserData.value*1e3, 100);
-        [X,Y] = meshgrid(xs,ys);
-        
-        pcolor(h.axis, X, Y, Z/1e-6);
-        shading(h.axis, 'interp');
-        colormap(h.axis, 'jet');
-        colorbar(h.axis);
+        handleNewSimData(Z, h, src, filename);
     end
     
     % Called to initiate manually draging the fit lines around
@@ -1009,41 +1062,11 @@ function sortPlotElements(ax)
         end
         break;
     end
-    
-    
-    % I don't know why this version doesn't work as I expected it to.
-    % It is kept here in case later I figure out why
-    %plotElements = ax.Children;
-    
-    %k = 1;
-    
-    % Imlines go on top
-    %for i = 1:length(ax.Children)
-    %    child = ax.Children(i);
-    %    if strcmp(child.Type, 'hggroup')
-    %        plotElements(k) = child;
-    %        k = k + 1;
-    %    end
-    %end
-    
-    % Put everything else that isn't a plot next
-    %for i = 1:length(ax.Children)
-    %    child = ax.Children(i);
-    %    if ~strcmp(child.Type, 'hggroup') && ~strcmp(child.Type, 'surface')
-    %        plotElements(k) = child;
-    %        k = k + 1;
-    %    end
-    %end
-    
-    % Put plots on the bottom
-    %for i = 1:length(ax.Children)
-    %    child = ax.Children(i);
-    %    if strcmp(child.Type, 'surface')
-    %        plotElements(k) = child;
-    %        k = k + 1;
-    %    end
-    %end
-    
-    %uistack(plotElements);
+end
+
+% Get the current date and time and use it to build a unique filename for a
+% simulation
+function filename = makeFileName()
+    filename = datestr(datetime(), 'yyyymmmdd_HH.MM.SS');
 end
 
