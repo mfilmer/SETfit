@@ -182,6 +182,8 @@ function SETfit()
         cgPeriodBox.Enable = 'on';
         
         autoscaleButton.Enable = 'on';
+        
+        syncZAxis();
     end
     
     function refreshDataPlot()
@@ -304,8 +306,18 @@ function SETfit()
             'Position', [0,0,figCenter,bottomMargin]);
         
         ax = axes(simPlotPanel, 'OuterPosition', [0,0,1,1]);
-        xlabel(ax,'V_G [mV]');
-        ylabel(ax,'V_D [mV]');
+        xlabel('V_G [mV]');
+        ylabel('V_D [mV]');
+        h = colorbar(ax);
+        ylabel(h, 'G [uS]');
+        colormap(h, 'jet');
+        
+        sim_zminBox = simLimitsBox(simTab, 'zmin', 0, 'uS', [figCenter-textWidth-10,axisPos(2)-textHeight/2+bottomMargin,textWidth,textHeight]);
+        sim_zmaxBox = simLimitsBox(simTab, 'zmax', 1, 'uS', [figCenter-textWidth-10,axisPos(2)+axisPos(4)-textHeight/2+bottomMargin,textWidth,textHeight]);
+        
+        linkedZCheckbox = uicontrol(simTab, 'Style', 'checkbox', 'Units', 'pixels', ...
+            'Position', [figCenter-87,10+bottomMargin,75,20], 'String', 'Linked Z', ...
+            'Callback', @linkedZCallback, 'Value', 1);
         
         % Create a pannel to hold the previously ran simulation parameters
         oldSimParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
@@ -361,6 +373,10 @@ function SETfit()
         simTab.UserData.h.oldSim_gs = oldSim_gs;
         simTab.UserData.h.oldSim_gd = oldSim_gd;
         
+        simTab.UserData.h.sim_zminBox = sim_zminBox;
+        simTab.UserData.h.sim_zmaxBox = sim_zmaxBox;
+        simTab.UserData.h.linkedZCheckbox = linkedZCheckbox;
+        
         % Reorganize tabs
         allTabs(end) = simTab;
         allTabs(end+1) = newTabTab;
@@ -391,6 +407,27 @@ function SETfit()
         
         handle = uicontrol(parent, 'Style', 'edit', 'String', num2str(value), ...
             'Units', 'pixels', 'Callback', @axisLimitsChangedCB,  'Enable', 'off', ...
+            'Position', pVec, 'Tag', tag);
+        handle.UserData.value = value*factor;
+        handle.UserData.factor = factor;
+    end
+    
+    function handle = simLimitsBox(parent, tag, value, units, pVec)
+        % Determine factor
+        factor = 1;
+        switch units
+            case 'mV'
+                factor = 1e-3;
+            case 'uS'
+                factor = 1e-6;
+            case 'K'
+                factor = 1;
+            otherwise
+                warning(['Unit ''' units ''' not recognized']);
+        end
+        
+        handle = uicontrol(parent, 'Style', 'edit', 'String', num2str(value), ...
+            'Units', 'pixels', 'Callback', @simLimitsChangedCB,  'Enable', 'off', ...
             'Position', pVec, 'Tag', tag);
         handle.UserData.value = value*factor;
         handle.UserData.factor = factor;
@@ -497,7 +534,9 @@ function SETfit()
     
     % Handle the new simulation data. This includes deleting some old files if
     % they were overwritten
-    function handleNewSimData(Z, h, tab, filename)
+    function handleNewSimData(Z, tab, filename)
+        h = tab.Parent.Parent.Parent.UserData.h;
+        
         % Plot the new data
         xs = linspace(xminBox.UserData.value*1e3, xmaxBox.UserData.value*1e3, 101);
         ys = linspace(yminBox.UserData.value*1e3, ymaxBox.UserData.value*1e3, 101);
@@ -505,8 +544,17 @@ function SETfit()
         
         pcolor(h.axis, X, Y, Z/zmaxBox.UserData.factor);
         shading(h.axis, 'interp');
+        
+        xlabel('V_G [mV]');
+        ylabel('V_D [mV]');
+        
         colormap(h.axis, 'jet');
-        colorbar(h.axis);
+        cb = colorbar(h.axis);
+        ylabel(cb, 'G [uS]');
+        
+        zmin = zminBox.UserData.value / zminBox.UserData.factor;
+        zmax = zmaxBox.UserData.value / zmaxBox.UserData.factor;
+        caxis(h.axis, [zmin, zmax]);
         
         % Delete the old file if one exists
         if isfield(tab.UserData, 'filename')
@@ -588,8 +636,48 @@ function SETfit()
         
         zminBox.String = num2str(zmin/zminBox.UserData.factor);
         zmaxBox.String = num2str(zmax/zmaxBox.UserData.factor);
+        zminBox.UserData.value = zmin;
+        zmaxBox.UserData.value = zmax;
         
         refreshDataPlot();
+        syncZAxis();
+    end
+    
+    % Whenever the linked z checkbox changes state
+    function linkedZCallback(src, ~)
+        syncZAxis(src.Parent);
+    end
+    
+    function syncZAxis(varargin)
+        % Get current tab if none was specified
+        if nargin == 0
+            tab = simTabGroup.SelectedTab;
+        else
+            tab = varargin{1};
+        end
+        
+        sim_zminBox = tab.UserData.h.sim_zminBox;
+        sim_zmaxBox = tab.UserData.h.sim_zmaxBox;
+        
+        switch tab.UserData.h.linkedZCheckbox.Value
+            case 0
+                sim_zminBox.Enable = 'on';
+                sim_zmaxBox.Enable = 'on';
+            case 1
+                sim_zminBox.Enable = 'off';
+                sim_zmaxBox.Enable = 'off';
+                
+                % Also copy the limits from the data axis
+                sim_zminBox.String = zminBox.String;
+                sim_zminBox.UserData.value = zminBox.UserData.value;
+                sim_zmaxBox.String = zmaxBox.String;
+                sim_zmaxBox.UserData.value = zmaxBox.UserData.value;
+                
+                % Adjust the simulated plot
+                zmin = zminBox.UserData.value/zminBox.UserData.factor;
+                zmax = zmaxBox.UserData.value/zmaxBox.UserData.factor;
+                caxis(tab.UserData.h.axis, [zmin, zmax]);
+        end
     end
     
     % Whenever the "Draw Fit" checkbox changes state
@@ -622,9 +710,36 @@ function SETfit()
                 dataAxis.UserData.ymax = num;
             case 'zmin'
                 dataAxis.UserData.zmin = num;
+                syncZAxis();
             case 'zmax'
                 dataAxis.UserData.zmax = num;
+                syncZAxis();
         end
+        
+        refreshDataPlot();
+        redrawFittingLines();
+    end
+    
+    % This function handles callbacks from simulation axis limit text boxes
+    % changing
+    function simLimitsChangedCB(src, ~)
+        [num, status] = str2num(src.String);    %#ok
+        if status == 0
+            src.String = num2str(src.UserData.value/src.UserData.factor);
+            return;
+        end
+        
+        % Get axis handle
+        h = src.Parent.UserData.h;
+        simAxis = h.axis;
+        
+        % Convert num from display units to base units
+        num = num*src.UserData.factor;
+        src.UserData.value = num;
+        
+        zmin = h.sim_zminBox.UserData.value/zmaxBox.UserData.factor;
+        zmax = h.sim_zmaxBox.UserData.value/zmaxBox.UserData.factor;
+        caxis(simAxis, [zmin, zmax]);
         
         refreshDataPlot();
         redrawFittingLines();
@@ -770,7 +885,7 @@ function SETfit()
         disp(['Simulation Output: ' result])
         Z = load(fullfile(simData_path, datfile));
         
-        handleNewSimData(Z, h, src, filename);
+        handleNewSimData(Z, src, filename);
         
         % Re-enable the sim parameters
         enableDisableSimParams(h, 'on');
@@ -1193,7 +1308,7 @@ function S = calcSquares(Z1, Z2)
     [X1, Y1] = meshgrid(xs1, ys1);
     [X2, Y2] = meshgrid(xs2, ys2);
     
-    Z2_interp = interp2(X2, Y2, Z2, X1, Y1);
+    Z2_interp = interp2(X2, Y2, Z2, X1, Y1, 'spline');
     
     r = (Z1-Z2_interp).^2;
     S = sum(sum(r));
