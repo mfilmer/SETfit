@@ -582,6 +582,43 @@ function SETfit()
         
         h = src.Parent.Parent.Parent.UserData.h;
         
+        enableDisableRunButton(h);
+    end
+    
+    % Whenever one of the fitting parameters (Cg, Cs, etc) is changed
+    function fittingParametersChanged(src, ~)
+        [num, status] = str2num(src.String);    %#ok
+        if status == 0
+            src.String = num2str(src.UserData.value/src.UserData.factor);
+            return;
+        end
+        
+        src.UserData.value = num * src.UserData.factor;
+        
+        enableDisableFitCheckbox();
+    end
+    
+    % Called to copy the fitting parameters from the data window into a new
+    % simulation tab
+    function copyFitLinesCB(~, ~)
+        newTab = newSimTab(simTabGroup);
+        h = newTab.UserData.h;
+        
+        % Copy over all the data we need
+        copyBox(cgBox, h.sim_cgBox);
+        copyBox(csBox, h.sim_csBox);
+        copyBox(cdBox, h.sim_cdBox);
+        copyBox(offsetBox, h.sim_offsetBox);
+        
+        function copyBox(src, dest)
+            dest.UserData.value = src.UserData.value;
+            dest.String = num2str(dest.UserData.value/dest.UserData.factor);
+        end
+        
+        enableDisableRunButton(h);
+    end
+    
+    function enableDisableRunButton(h)
         % Determine if all 6 parameters have a value
         state = true;
         if h.sim_csBox.UserData.value <= 0
@@ -604,16 +641,7 @@ function SETfit()
         end
     end
     
-    % Whenever one of the fitting parameters (Cg, Cs, etc) is changed
-    function fittingParametersChanged(src, ~)
-        [num, status] = str2num(src.String);    %#ok
-        if status == 0
-            src.String = num2str(src.UserData.value/src.UserData.factor);
-            return;
-        end
-        
-        src.UserData.value = num * src.UserData.factor;
-        
+    function enableDisableFitCheckbox()
         % Determine if all 4 parameters have a value
         state = true;
         if csBox.UserData.value <= 0
@@ -639,14 +667,11 @@ function SETfit()
         end
     end
     
-    % Called to copy the fitting parameters from the data window into a new
-    % simulation tab
-    function copyFitLinesCallback(src, eventdata)
-    end
-    
     % Actually run the simulation
     function runSimCB(src, ~)
         h = src.Parent.Parent.Parent.UserData.h;
+        
+        offset = h.sim_offsetBox.UserData.value;
         
         vds_start = num2str(yminBox.UserData.value * 1e3);
         vds_end = num2str(ymaxBox.UserData.value * 1e3);
@@ -656,8 +681,8 @@ function SETfit()
         Gs = num2str(h.sim_gsBox.UserData.value/G0);
         Gd = num2str(h.sim_gdBox.UserData.value/G0);
         num_e = num2str(5);
-        vg_start = num2str(xminBox.UserData.value * 1e3);
-        vg_end = num2str(xmaxBox.UserData.value * 1e3);
+        vg_start = num2str((xminBox.UserData.value-offset) * 1e3);
+        vg_end = num2str((xmaxBox.UserData.value-offset) * 1e3);
         numVgpoints = num2str(101);
         Cg = num2str(h.sim_cgBox.UserData.value);
         T = num2str(h.sim_tempBox.UserData.value);
@@ -856,6 +881,8 @@ function SETfit()
             if fitLineCheckbox.Value
                 redrawFittingLines();
             end
+            
+            enableDisableFitCheckbox();
         end
         
         function recalculateCS(newPos)
@@ -870,6 +897,8 @@ function SETfit()
             if fitLineCheckbox.Value
                 redrawFittingLines();
             end
+            
+            enableDisableFitCheckbox();
         end
         
         function recalculateCD(newPos)
@@ -883,6 +912,8 @@ function SETfit()
             if fitLineCheckbox.Value
                 redrawFittingLines();
             end
+            
+            enableDisableFitCheckbox();
         end
     end
     
