@@ -147,7 +147,7 @@ function SETfit()
         'Tag', 'cd', 'Callback', @fitCheckboxCB, 'Enable', 'off');
     
     % Create new tab tab. The tab that creates a new tab when it is opened
-    newTabTab = uitab('Parent', simTabGroup, 'Title', '+');
+    newTabTab = uitab('Parent', simTabGroup, 'Title', '+', 'Tag', '+');
     simTabGroup.SelectionChangedFcn = @tabChangedCB;
     
     %% Load measured data file
@@ -208,6 +208,8 @@ function SETfit()
         % Plot the data fill in the simulation parameters
         newTab = newSimTab(simTabGroup);
         newTab.UserData.filename = name;
+        newTab.UserData.h.filenameLabel.String = name;
+        
         h = newTab.UserData.h;
         
         % Plot the new data
@@ -676,6 +678,9 @@ function SETfit()
         zmax = settings.zmax / settings.zfactor;
         caxis(h.axis, [zmin, zmax]);
         
+        setBox(h.sim_zminBox, settings.zmin);
+        setBox(h.sim_zmaxBox, settings.zmax);
+        
         % Delete the old file if one exists
         if isfield(tab.UserData, 'filename')
             oldFilename = tab.UserData.filename;
@@ -698,7 +703,7 @@ function SETfit()
         setBox(h.oldSim_offset, h.sim_offsetBox.UserData.value);
         
         % Update displayed filename
-        h.filenameLabel.String = fullfile(simData_path, filename);
+        h.filenameLabel.String = filename;
         
         % Calculate sum of residual squares
         if isstruct(dataAxis.UserData)
@@ -769,30 +774,37 @@ function SETfit()
     function syncZAxis(varargin)
         % Get current tab if none was specified
         if nargin == 0
-            tab = simTabGroup.SelectedTab;
+            tablist = simTabGroup.Children;
         else
-            tab = varargin{1};
+            tablist = varargin{1};
         end
         
-        sim_zminBox = tab.UserData.h.sim_zminBox;
-        sim_zmaxBox = tab.UserData.h.sim_zmaxBox;
-        
-        switch tab.UserData.h.linkedZCheckbox.Value
-            case 0
-                sim_zminBox.Enable = 'on';
-                sim_zmaxBox.Enable = 'on';
-            case 1
-                sim_zminBox.Enable = 'off';
-                sim_zmaxBox.Enable = 'off';
-                
-                % Copy the limits from the data axis
-                setBox(sim_zminBox, settings.zmin);
-                setBox(sim_zmaxBox, settings.zmax);
-                
-                % Adjust the simulated plot
-                zmin = settings.zmin/settings.zfactor;
-                zmax = settings.zmax/settings.zfactor;
-                caxis(tab.UserData.h.axis, [zmin, zmax]);
+        for i = 1:length(tablist)
+            tab = tablist(i);
+            if strcmp(tab.Tag, '+')
+                continue;
+            end
+            
+            sim_zminBox = tab.UserData.h.sim_zminBox;
+            sim_zmaxBox = tab.UserData.h.sim_zmaxBox;
+            
+            switch tab.UserData.h.linkedZCheckbox.Value
+                case 0
+                    sim_zminBox.Enable = 'on';
+                    sim_zmaxBox.Enable = 'on';
+                case 1
+                    sim_zminBox.Enable = 'off';
+                    sim_zmaxBox.Enable = 'off';
+                    
+                    % Copy the limits from the data axis
+                    setBox(sim_zminBox, settings.zmin);
+                    setBox(sim_zmaxBox, settings.zmax);
+                    
+                    % Adjust the simulated plot
+                    zmin = settings.zmin/settings.zfactor;
+                    zmax = settings.zmax/settings.zfactor;
+                    caxis(tab.UserData.h.axis, [zmin, zmax]);
+            end
         end
     end
     
