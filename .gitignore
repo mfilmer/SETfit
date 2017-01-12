@@ -1,8 +1,7 @@
 
 *.asv
-*.dat
+testData/*
 settings.m
 mainsettings.m
-*simulations/*
-*SETsimulator/
+SETsimulator/*
 !SETsimulator/guidiamonds.py
