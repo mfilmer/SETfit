@@ -209,6 +209,7 @@ function SETfit()
         newTab = newSimTab(simTabGroup);
         newTab.UserData.filename = name;
         newTab.UserData.h.filenameLabel.String = name;
+        newTab.Title = simParams.tabname;
         
         h = newTab.UserData.h;
         
@@ -772,7 +773,7 @@ function SETfit()
     end
     
     function syncZAxis(varargin)
-        % Get current tab if none was specified
+        % Get entire tab list if no individual tab was specified
         if nargin == 0
             tablist = simTabGroup.Children;
         else
@@ -1502,6 +1503,8 @@ end
 % Save the specified tab's data in an .m file
 function saveTabFile(mfile, tab, settings)
     h = tab.UserData.h;
+    
+    data.tabname = tab.Title;
     
     data.cg = h.oldSim_cg.UserData.value;
     data.cs = h.oldSim_cs.UserData.value;
