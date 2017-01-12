@@ -9,9 +9,6 @@ function SETfit()
     % nearly anyone who wants to use this.
     python_path = 'C:\Python27_32\python.exe';
     
-    % This is the path to the folder that holds all the simulation files.
-    simData_path = 'simulations';
-    
     %% System Parameters
     % Location of the simulator .py file
     simulator_path = 'SETsimulator\guidiamonds.py';
@@ -21,12 +18,19 @@ function SETfit()
     G0 = 7.7480917346e-5;   % Conductance quantum in Siemens;
     
     %% Create the GUI
+    % Load settings file
+    settings = load('settings.m', '-mat');
+    
+    % Load the path to the folder that holds all the simulation files
+    simData_path = settings.simData_path;
+    
     % Create main figure
     figWidth = 1200;      % Pixels
     figHeight = 670;     % Pixels
     figCenter = figWidth/2;
     fig = figure('Position', [125,20,figWidth,figHeight]);
     fig.MenuBar = 'none';
+    fig.CloseRequestFcn = @figureCloseCB;
     
     % Create the main panels
     bottomMargin = 100;         % Pixels
@@ -115,11 +119,95 @@ function SETfit()
         'Position', [70,13,50,20], 'String', '<html>Fit C<sub>D</sub></html>', ...
         'Tag', 'cd', 'Callback', @fitCheckboxCB, 'Enable', 'off');
     
-    % Create simulation tabs
+    % Create new tab tab. The tab that creates a new tab when it is opened
     newTabTab = uitab('Parent', simTabGroup, 'Title', '+');
-    newSimTab(simTabGroup);
     simTabGroup.SelectionChangedFcn = @tabChangedCB;
     
+    %% Load measured data file
+    if isfield(settings, 'measuredDataFile')
+        measuredDataFile = settings.measuredDataFile;
+        if ~strcmp(measuredDataFile,'') && ~isempty(dir(measuredDataFile))
+            measuredData = load(measuredDataFile);
+            plotRawMeasuredData(measuredData);
+            
+            % Update all the axis limits
+            setBox(xminBox, settings.xmin);
+            setBox(xmaxBox, settings.xmax);
+            setBox(yminBox, settings.ymin);
+            setBox(ymaxBox, settings.ymax);
+            setBox(zminBox, settings.zmin);
+            setBox(zmaxBox, settings.zmax);
+            
+            % Replot now that we have everything in order
+            refreshDataPlot()
+        end
+    end
+    
+    %% Load existing simulations from the folder. If there is none, create an empty tab
+    numLoadedSims = 0;
+    fileList = dir(fullfile(simData_path, '*.m'));
+    for fileIndex = 1:length(fileList)
+        file = fileList(fileIndex);
+        [pathstr, name, ~] = fileparts(file.name);
+        
+        % Check for corresponding .dat file
+        datFile = dir(fullfile(simData_path, pathstr, [name '.dat']));
+        if isempty(datFile)
+            continue;       % If we don't have it move on to the next file
+        end
+        
+        % If we have a pair of .m and a .dat files load them
+        simParams = load(fullfile(simData_path, file.name), '-mat');
+        loadedSimData = load(fullfile(simData_path, datFile.name));
+        
+        % Plot the data fill in the simulation parameters
+        newTab = newSimTab(simTabGroup);
+        h = newTab.UserData.h;
+        
+        % Plot the new data
+        xs = linspace(simParams.xmin, simParams.xmax, size(loadedSimData,2));
+        ys = linspace(simParams.ymin, simParams.ymax, size(loadedSimData,1));
+        [X,Y] = meshgrid(xs,ys);
+        
+        pcolor(h.axis, X, Y, loadedSimData/zmaxBox.UserData.factor);
+        shading(h.axis, 'interp');
+        
+        xlabel('V_G [mV]');
+        ylabel('V_D [mV]');
+        
+        colormap(h.axis, 'jet');
+        cb = colorbar(h.axis);
+        ylabel(cb, 'G [uS]');
+        
+        % Update the old simulation labels
+        h.oldSim_cg.String = num2str(h.sim_cgBox.UserData.value/h.sim_cgBox.UserData.factor,3);
+        h.oldSim_cs.String = num2str(h.sim_csBox.UserData.value/h.sim_csBox.UserData.factor,3);
+        h.oldSim_cd.String = num2str(h.sim_cdBox.UserData.value/h.sim_cdBox.UserData.factor,3);
+        h.oldSim_gs.String = num2str(h.sim_gsBox.UserData.value/h.sim_gsBox.UserData.factor,3);
+        h.oldSim_gd.String = num2str(h.sim_gdBox.UserData.value/h.sim_gdBox.UserData.factor,3);
+        h.oldSim_temp.String = num2str(h.sim_tempBox.UserData.value/h.sim_tempBox.UserData.factor,3);
+        h.oldSim_offset.String = num2str(h.sim_offsetBox.UserData.value/h.sim_offsetBox.UserData.factor,3);
+        
+        % Calculate sum of residual squares
+        if isstruct(dataAxis.UserData)
+            zfactor = zmaxBox.UserData.factor;
+            squ = calcSquares(dataAxis.UserData.Z/zfactor, Z/zfactor);
+            h.oldSim_squ.String = num2str(squ,3);
+        else
+            h.oldSim_squ.String = '';
+        end
+        
+        % We loaded a simulation. Make sure to count it.
+        numLoadedSims = numLoadedSims + 1;
+    end
+    
+    % We went through all this work of counting the number of loaded
+    % simulations. Lets check if that number isn't zero and ignore the
+    % actual number.
+    if numLoadedSims == 0
+        % Create empty simulation tab
+        newSimTab(simTabGroup);
+    end
     
     %% Helper functions
     % Plot a matrix of data on the measured data axis
@@ -182,8 +270,6 @@ function SETfit()
         cgPeriodBox.Enable = 'on';
         
         autoscaleButton.Enable = 'on';
-        
-        syncZAxis();
     end
     
     function refreshDataPlot()
@@ -535,7 +621,7 @@ function SETfit()
     % Handle the new simulation data. This includes deleting some old files if
     % they were overwritten
     function handleNewSimData(Z, tab, filename)
-        h = tab.Parent.Parent.Parent.UserData.h;
+        h = tab.UserData.h;
         
         % Plot the new data
         xs = linspace(xminBox.UserData.value*1e3, xmaxBox.UserData.value*1e3, 101);
@@ -574,6 +660,12 @@ function SETfit()
         data.cd = h.sim_cdBox.UserData.value;
         data.gs = h.sim_gsBox.UserData.value;
         data.gd = h.sim_gdBox.UserData.value;
+        data.xmin = xminBox.UserData.value;
+        data.xmax = xmaxBox.UserData.value;
+        data.ymin = yminBox.UserData.value;
+        data.ymax = ymaxBox.UserData.value;
+        data.zmin = h.sim_zminBox.UserData.value;
+        data.zmax = h.sim_zmaxBox.UserData.value;
         data.offset = h.sim_offsetBox.UserData.value;
         data.temp = h.sim_tempBox.UserData.value;   %#ok  it is saved on the next line
         save(mfile, '-struct', 'data');
@@ -624,6 +716,9 @@ function SETfit()
         dataFileName.String = FileName;
         Z = importdata(fullfile(PathName, FileName)) * factorTextBox.UserData.value;
         plotRawMeasuredData(Z);
+        syncZAxis();
+        
+        settings.measuredDataFile = FileName;
     end
     
     % Recalculate z axis limits based on data
@@ -885,10 +980,24 @@ function SETfit()
         disp(['Simulation Output: ' result])
         Z = load(fullfile(simData_path, datfile));
         
-        handleNewSimData(Z, src, filename);
+        handleNewSimData(Z, src.Parent.Parent.Parent, filename);
         
         % Re-enable the sim parameters
         enableDisableSimParams(h, 'on');
+    end
+    
+    % When the figure closes clean some stuff up
+    function figureCloseCB(src, eventdata)
+        settings.xmin = xminBox.UserData.value;
+        settings.xmax = xmaxBox.UserData.value;
+        settings.ymin = yminBox.UserData.value;
+        settings.ymax = ymaxBox.UserData.value;
+        settings.zmin = zminBox.UserData.value;
+        settings.zmax = zmaxBox.UserData.value;
+        
+        save('settings.m', '-struct', 'settings');
+        
+        delete(src);
     end
     
     % Called to initiate manually draging the fit lines around
@@ -1325,4 +1434,9 @@ function enableDisableSimParams(h, state)
     h.sim_offsetBox.Enable = state;
     h.sim_tempBox.Enable = state;
     h.runSimButton.Enable = state;
+end
+
+function setBox(h, value)
+    h.UserData.value = value;
+    h.String = num2str(value/h.UserData.factor);
 end
