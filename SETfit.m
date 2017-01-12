@@ -18,7 +18,11 @@ function SETfit()
     G0 = 7.7480917346e-5;   % Conductance quantum in Siemens;
     
     %% Create the GUI
-    % Load settings file
+    % Load settings file. If there is no settings file, copy
+    % 'settings.m.default' and use that
+    if isempty(dir('settings.m'))
+        copyfile('settings.m.default', 'settings.m');
+    end
     settings = load('settings.m', '-mat');
     
     % Load the path to the folder that holds all the simulation files
@@ -141,6 +145,17 @@ function SETfit()
             % Replot now that we have everything in order
             refreshDataPlot()
         end
+        
+    else        % Set up some default values for some of the parameters
+        settings.xmin = 0;
+        settings.xmax = 1;
+        settings.xfactor = 1e-3;
+        settings.ymin = 0;
+        settings.ymax = 1;
+        settings.yfactor = 1e-3;
+        settings.zmin = 0;
+        settings.zmax = 1;
+        settings.zfactor = 1e-6;
     end
     
     %% Load existing simulations from the folder. If there is none, create an empty tab
@@ -217,7 +232,7 @@ function SETfit()
         ny = size(Z,1);
         nx = size(Z,2);
         [X,Y] = meshgrid(1:nx,1:ny);
-        pcolor(dataAxis,X,Y,Z/zmaxBox.UserData.factor);
+        pcolor(dataAxis,X,Y,Z/settings.zfactor);
         shading(dataAxis,'interp');
         
         % Update axis limits
@@ -230,25 +245,25 @@ function SETfit()
         ylabel(dataAxis,'V_D [mV]');
         
         % Update textboxes to show correct limits
-        xminBox.String = '1';           xminBox.UserData.value = 1*xminBox.UserData.factor;
-        xmaxBox.String = num2str(nx);   xmaxBox.UserData.value = nx*xmaxBox.UserData.factor;
-        yminBox.String = '1';           yminBox.UserData.value = 1*yminBox.UserData.factor;
-        ymaxBox.String = num2str(ny);   ymaxBox.UserData.value = ny*ymaxBox.UserData.factor;
+        xminBox.String = '1';           xminBox.UserData.value = 1*settings.xfactor;
+        xmaxBox.String = num2str(nx);   xmaxBox.UserData.value = nx*settings.xfactor;
+        yminBox.String = '1';           yminBox.UserData.value = 1*settings.yfactor;
+        ymaxBox.String = num2str(ny);   ymaxBox.UserData.value = ny*settings.yfactor;
         
         v = caxis(dataAxis);
-        zminBox.String = num2str(v(1)); zminBox.UserData.value = v(1)*zminBox.UserData.factor;
-        zmaxBox.String = num2str(v(2)); zmaxBox.UserData.value = v(2)*zminBox.UserData.factor;
+        zminBox.String = num2str(v(1)); zminBox.UserData.value = v(1)*settings.zfactor;
+        zmaxBox.String = num2str(v(2)); zmaxBox.UserData.value = v(2)*settings.zfactor;
         
         % Store the data
         dataAxis.UserData.Z = Z;
-        dataAxis.UserData.xmin = 1*xminBox.UserData.factor;
-        dataAxis.UserData.xmax = nx*xmaxBox.UserData.factor;
+        dataAxis.UserData.xmin = 1*settings.xfactor;
+        dataAxis.UserData.xmax = nx*settings.xfactor;
         dataAxis.UserData.nx = nx;
-        dataAxis.UserData.ymin = 1*yminBox.UserData.factor;
-        dataAxis.UserData.ymax = ny*ymaxBox.UserData.factor;
+        dataAxis.UserData.ymin = 1*settings.yfactor;
+        dataAxis.UserData.ymax = ny*settings.yfactor;
         dataAxis.UserData.ny = ny;
-        dataAxis.UserData.zmin = v(1)*zminBox.UserData.factor;
-        dataAxis.UserData.zmax = v(2)*zmaxBox.UserData.factor;
+        dataAxis.UserData.zmin = v(1)*settings.zfactor;
+        dataAxis.UserData.zmax = v(2)*settings.zfactor;
         
         % Enable ui elements
         xminBox.Enable = 'on';
@@ -277,30 +292,30 @@ function SETfit()
         Z = dataAxis.UserData.Z;
         
         % Find the limits
-        xmin = dataAxis.UserData.xmin;
-        xmax = dataAxis.UserData.xmax;
-        ymin = dataAxis.UserData.ymin;
-        ymax = dataAxis.UserData.ymax;
-        zmin = dataAxis.UserData.zmin;
-        zmax = dataAxis.UserData.zmax;
+        xmin = settings.xmin;
+        xmax = settings.xmax;
+        ymin = settings.ymin;
+        ymax = settings.ymax;
+        zmin = settings.zmin;
+        zmax = settings.zmax;
         
         nx = dataAxis.UserData.nx;
         ny = dataAxis.UserData.ny;
         
         % Create X and Y
-        xs = linspace(xmin/xminBox.UserData.factor,xmax/xmaxBox.UserData.factor,nx);
-        ys = linspace(ymin/yminBox.UserData.factor,ymax/ymaxBox.UserData.factor,ny);
+        xs = linspace(xmin/settings.xfactor,xmax/settings.xfactor,nx);
+        ys = linspace(ymin/settings.yfactor,ymax/settings.yfactor,ny);
         [X,Y] = meshgrid(xs,ys);
         
         % Delete old plot
         deletePlots(dataAxis);
         
         % Plot data
-        pcolor(dataAxis,X,Y,Z/zmaxBox.UserData.factor);
+        pcolor(dataAxis,X,Y,Z/settings.zfactor);
         shading(dataAxis,'interp');
         h = colorbar(dataAxis);
         ylabel(h, 'G [uS]');
-        caxis(dataAxis,[zmin/zminBox.UserData.factor,zmax/zmaxBox.UserData.factor]);
+        caxis(dataAxis,[zmin/settings.zfactor,zmax/settings.zfactor]);
         xlabel(dataAxis,'V_G [mV]');
         ylabel(dataAxis,'V_D [mV]');
         
@@ -314,14 +329,8 @@ function SETfit()
         % We have to do this because making a new plot overwrites the
         % existing data
         dataAxis.UserData.Z = Z;
-        dataAxis.UserData.xmin = xmin;
-        dataAxis.UserData.xmax = xmax;
         dataAxis.UserData.nx = nx;
-        dataAxis.UserData.ymin = ymin;
-        dataAxis.UserData.ymax = ymax;
         dataAxis.UserData.ny = ny;
-        dataAxis.UserData.zmin = zmin;
-        dataAxis.UserData.zmax = zmax;
     end
     
     function redrawFittingLines()
@@ -343,10 +352,10 @@ function SETfit()
         md = -cg/cd;
         
         % Set up the edges
-        xmin = dataAxis.UserData.xmin;
-        xmax = dataAxis.UserData.xmax;
-        ymin = dataAxis.UserData.ymin;
-        ymax = dataAxis.UserData.ymax;
+        xmin = settings.xmin;
+        xmax = settings.xmax;
+        ymin = settings.ymin;
+        ymax = settings.ymax;
         edges = [xmin, xmax, ymin, ymax];
         
         dWidth = q/cg;
@@ -363,14 +372,14 @@ function SETfit()
             % Find the source side line
             [X,Y] = findLine([node,0], ms, edges);
             % Convert to display units
-            X = X / xmaxBox.UserData.factor;
-            Y = Y / ymaxBox.UserData.factor;
+            X = X / settings.xfactor;
+            Y = Y / settings.yfactor;
             line(dataAxis,X,Y);
             
             % Find the drain side line
             [X,Y] = findLine([node,0], md, edges);
-            X = X / xmaxBox.UserData.factor;
-            Y = Y / ymaxBox.UserData.factor;
+            X = X / settings.xfactor;
+            Y = Y / settings.yfactor;
             line(dataAxis,X,Y);
         end
         
@@ -479,72 +488,48 @@ function SETfit()
     
     function handle = limitsBox(parent, tag, value, units, pVec)
         % Determine factor
-        factor = 1;
-        switch units
-            case 'mV'
-                factor = 1e-3;
-            case 'uS'
-                factor = 1e-6;
-            case 'K'
-                factor = 1;
-            otherwise
-                warning(['Unit ''' units ''' not recognized']);
-        end
+        factor = unitsToFactor(units);
         
+        % Make box
         handle = uicontrol(parent, 'Style', 'edit', 'String', num2str(value), ...
             'Units', 'pixels', 'Callback', @axisLimitsChangedCB,  'Enable', 'off', ...
             'Position', pVec, 'Tag', tag);
+        
+        % Store data
         handle.UserData.value = value*factor;
         handle.UserData.factor = factor;
     end
     
     function handle = simLimitsBox(parent, tag, value, units, pVec)
         % Determine factor
-        factor = 1;
-        switch units
-            case 'mV'
-                factor = 1e-3;
-            case 'uS'
-                factor = 1e-6;
-            case 'K'
-                factor = 1;
-            otherwise
-                warning(['Unit ''' units ''' not recognized']);
-        end
+        factor = unitsToFactor(units);
         
+        % Make box
         handle = uicontrol(parent, 'Style', 'edit', 'String', num2str(value), ...
             'Units', 'pixels', 'Callback', @simLimitsChangedCB,  'Enable', 'off', ...
             'Position', pVec, 'Tag', tag);
+        
+        % Store data
         handle.UserData.value = value*factor;
         handle.UserData.factor = factor;
     end
     
     function handle = entryBox(parent, label, units, pVec)
+        % Constants
         lw = 20;
         uw = 20;
         h = 20;
         lo = -3;
         
         % Determine factor
-        factor = 1;
-        switch units
-            case 'aF'
-                factor = 1e-18;
-            case 'mV'
-                factor = 1e-3;
-            case 'uS'
-                factor = 1e-6;
-            case 'K'
-                factor = 1;
-            otherwise
-                warning(['Unit ''' units ''' not recognized']);
-        end
+        factor = unitsToFactor(units);
         
+        % Make box
         handle = uicontrol(parent, 'Style', 'edit', 'Units', 'pixels', ...
             'Position', pVec, 'HorizontalAlignment', 'right', 'Enable', 'off', ...
             'Callback', @fittingParametersChanged, 'Tag', label);
-        handle.UserData.value = 0;
-        handle.UserData.factor = factor;
+        
+        % Make labels if they aren't empty strings
         if ~strcmp(label, '')
             uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
             'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2)+lo, lw, h], ...
@@ -556,18 +541,25 @@ function SETfit()
                 'Units', 'pixels', 'Position', [pVec(1)+pVec(3)+2, pVec(2)+lo, uw, h], ...
                 'String', units);
         end
+        
+        % Store data
+        handle.UserData.value = 0;
+        handle.UserData.factor = factor;
     end
     
     function dataHandle = simLabelBox(parent, label, units, pVec)
+        % Constants
         lw = 50;
         h = 20;
         lo = -3;
         
         pVec(2) = pVec(2) + lo;
         
+        % Make box
         dataHandle = uicontrol(parent, 'Style', 'text', 'Units', 'pixels', ...
             'Position', pVec, 'HorizontalAlignment', 'left');
         
+        % Make label and include units if units isn't an empty string
         if strcmp(units, '')
             uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
                 'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, h], ...
@@ -580,31 +572,21 @@ function SETfit()
     end
     
     function handle = simEntryBox(parent, label, units, pVec)
+        % Constants
         lw = 20;
         uw = 20;
         h = 20;
         lo = -3;
         
         % Determine factor
-        factor = 1;
-        switch units
-            case 'aF'
-                factor = 1e-18;
-            case 'mV'
-                factor = 1e-3;
-            case 'uS'
-                factor = 1e-6;
-            case 'K'
-                factor = 1;
-            otherwise
-                warning(['Unit ''' units ''' not recognized']);
-        end
+        factor = unitsToFactor(units);
         
+        % Make box
         handle = uicontrol(parent, 'Style', 'edit', 'Units', 'pixels', ...
             'Position', pVec, 'HorizontalAlignment', 'right', ...
             'Callback', @simParametersChanged, 'Tag', label);
-        handle.UserData.value = 0;
-        handle.UserData.factor = factor;
+        
+        % Make labels if they aren't empty strings
         if ~strcmp(label, '')
             uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
                 'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2)+lo, lw, h], ...
@@ -616,6 +598,10 @@ function SETfit()
                 'Units', 'pixels', 'Position', [pVec(1)+pVec(3)+2, pVec(2)+lo, uw, h], ...
                 'String', units);
         end
+        
+        % Store data
+        handle.UserData.value = 0;
+        handle.UserData.factor = factor;
     end
     
     % Handle the new simulation data. This includes deleting some old files if
@@ -624,11 +610,11 @@ function SETfit()
         h = tab.UserData.h;
         
         % Plot the new data
-        xs = linspace(xminBox.UserData.value*1e3, xmaxBox.UserData.value*1e3, 101);
-        ys = linspace(yminBox.UserData.value*1e3, ymaxBox.UserData.value*1e3, 101);
+        xs = linspace(settings.xmin/settings.xfactor, settings.xmax/settings.xfactor, 101);
+        ys = linspace(settings.ymin/settings.yfactor, settings.ymax/settings.yfactor, 101);
         [X,Y] = meshgrid(xs,ys);
         
-        pcolor(h.axis, X, Y, Z/zmaxBox.UserData.factor);
+        pcolor(h.axis, X, Y, Z/settings.zfactor);
         shading(h.axis, 'interp');
         
         xlabel('V_G [mV]');
@@ -638,8 +624,8 @@ function SETfit()
         cb = colorbar(h.axis);
         ylabel(cb, 'G [uS]');
         
-        zmin = zminBox.UserData.value / zminBox.UserData.factor;
-        zmax = zmaxBox.UserData.value / zmaxBox.UserData.factor;
+        zmin = settings.zmin / settings.zactor;
+        zmax = settings.zmax / settings.zfactor;
         caxis(h.axis, [zmin, zmax]);
         
         % Delete the old file if one exists
@@ -660,10 +646,10 @@ function SETfit()
         data.cd = h.sim_cdBox.UserData.value;
         data.gs = h.sim_gsBox.UserData.value;
         data.gd = h.sim_gdBox.UserData.value;
-        data.xmin = xminBox.UserData.value;
-        data.xmax = xmaxBox.UserData.value;
-        data.ymin = yminBox.UserData.value;
-        data.ymax = ymaxBox.UserData.value;
+        data.xmin = settings.xmin;
+        data.xmax = settings.xmax;
+        data.ymin = settings.ymin;
+        data.ymax = settings.ymax;
         data.zmin = h.sim_zminBox.UserData.value;
         data.zmax = h.sim_zmaxBox.UserData.value;
         data.offset = h.sim_offsetBox.UserData.value;
@@ -681,7 +667,7 @@ function SETfit()
         
         % Calculate sum of residual squares
         if isstruct(dataAxis.UserData)
-            zfactor = zmaxBox.UserData.factor;
+            zfactor = settings.zfactor;
             squ = calcSquares(dataAxis.UserData.Z/zfactor, Z/zfactor);
             h.oldSim_squ.String = num2str(squ,3);
         else
@@ -726,13 +712,11 @@ function SETfit()
         zmin = min(min(dataAxis.UserData.Z));
         zmax = max(max(dataAxis.UserData.Z));
         
-        dataAxis.UserData.zmin = zmin;
-        dataAxis.UserData.zmax = zmax;
-        
-        zminBox.String = num2str(zmin/zminBox.UserData.factor);
-        zmaxBox.String = num2str(zmax/zmaxBox.UserData.factor);
-        zminBox.UserData.value = zmin;
-        zmaxBox.UserData.value = zmax;
+        settings.zmin = zmin;
+        settings.zmax = zmax;
+
+        setBox(zminBox, zmin);
+        setBox(zmaxBox, zmax);
         
         refreshDataPlot();
         syncZAxis();
@@ -762,15 +746,13 @@ function SETfit()
                 sim_zminBox.Enable = 'off';
                 sim_zmaxBox.Enable = 'off';
                 
-                % Also copy the limits from the data axis
-                sim_zminBox.String = zminBox.String;
-                sim_zminBox.UserData.value = zminBox.UserData.value;
-                sim_zmaxBox.String = zmaxBox.String;
-                sim_zmaxBox.UserData.value = zmaxBox.UserData.value;
+                % Copy the limits from the data axis
+                setBox(sim_zminBox, settings.zmin);
+                setBox(sim_zmaxBox, settings.zmax);
                 
                 % Adjust the simulated plot
-                zmin = zminBox.UserData.value/zminBox.UserData.factor;
-                zmax = zmaxBox.UserData.value/zmaxBox.UserData.factor;
+                zmin = settings.zmin/settings.zfactor;
+                zmax = settings.zmax/settings.zfactor;
                 caxis(tab.UserData.h.axis, [zmin, zmax]);
         end
     end
@@ -796,18 +778,18 @@ function SETfit()
         
         switch src.Tag
             case 'xmin'
-                dataAxis.UserData.xmin = num;
+                settings.xmin = num;
             case 'xmax'
-                dataAxis.UserData.xmax = num;
+                settings.xmax = num;
             case 'ymin'
-                dataAxis.UserData.ymin = num;
+                settings.ymin = num;
             case 'ymax'
-                dataAxis.UserData.ymax = num;
+                settings.ymax = num;
             case 'zmin'
-                dataAxis.UserData.zmin = num;
+                settings.zmin = num;
                 syncZAxis();
             case 'zmax'
-                dataAxis.UserData.zmax = num;
+                settings.zmax = num;
                 syncZAxis();
         end
         
@@ -832,8 +814,8 @@ function SETfit()
         num = num*src.UserData.factor;
         src.UserData.value = num;
         
-        zmin = h.sim_zminBox.UserData.value/zmaxBox.UserData.factor;
-        zmax = h.sim_zmaxBox.UserData.value/zmaxBox.UserData.factor;
+        zmin = h.sim_zminBox.UserData.value/settings.zfactor;
+        zmax = h.sim_zmaxBox.UserData.value/settings.zfactor;
         caxis(simAxis, [zmin, zmax]);
         
         refreshDataPlot();
@@ -871,10 +853,6 @@ function SETfit()
     % Called to copy the fitting parameters from the data window into a new
     % simulation tab
     function copyFitLinesCB(~, ~)
-        % Create a new tab and copy data into it
-        % I think this is not the best way to do this
-        %newTab = newSimTab(simTabGroup);
-        %h = newTab.UserData.h;
         
         % Copy data into currently active tab
         thisTab = simTabGroup.SelectedTab;
@@ -956,16 +934,16 @@ function SETfit()
         
         offset = h.sim_offsetBox.UserData.value;
         
-        vds_start = num2str(yminBox.UserData.value * 1e3);
-        vds_end = num2str(ymaxBox.UserData.value * 1e3);
+        vds_start = num2str(settings.ymin * 1e3);   % mV
+        vds_end = num2str(settings.ymax * 1e3);     % mV
         numVdspoints = num2str(101 + 1);    % Note, for some reason the simulator runs one less point than requested for this parameter
         Cs = num2str(h.sim_csBox.UserData.value);
         Cd = num2str(h.sim_cdBox.UserData.value);
         Gs = num2str(h.sim_gsBox.UserData.value/G0);
         Gd = num2str(h.sim_gdBox.UserData.value/G0);
         num_e = num2str(5);
-        vg_start = num2str((xminBox.UserData.value-offset) * 1e3);
-        vg_end = num2str((xmaxBox.UserData.value-offset) * 1e3);
+        vg_start = num2str((settings.xmin-offset) * 1e3);   % mV
+        vg_end = num2str((settings.xmax-offset) * 1e3);     % mV
         numVgpoints = num2str(101);
         Cg = num2str(h.sim_cgBox.UserData.value);
         T = num2str(h.sim_tempBox.UserData.value);
@@ -987,16 +965,8 @@ function SETfit()
     end
     
     % When the figure closes clean some stuff up
-    function figureCloseCB(src, eventdata)
-        settings.xmin = xminBox.UserData.value;
-        settings.xmax = xmaxBox.UserData.value;
-        settings.ymin = yminBox.UserData.value;
-        settings.ymax = ymaxBox.UserData.value;
-        settings.zmin = zminBox.UserData.value;
-        settings.zmax = zmaxBox.UserData.value;
-        
+    function figureCloseCB(src, ~)
         save('settings.m', '-struct', 'settings');
-        
         delete(src);
     end
     
@@ -1010,12 +980,12 @@ function SETfit()
         end
         
         % Get the axis boundaries
-        xmin = dataAxis.UserData.xmin;
-        xmax = dataAxis.UserData.xmax;
-        ymin = dataAxis.UserData.ymin;
-        ymax = dataAxis.UserData.ymax;
-        xFactor = xmaxBox.UserData.factor;
-        yFactor = xmaxBox.UserData.factor;
+        xmin = settings.xmin;
+        xmax = settings.xmax;
+        ymin = settings.ymin;
+        ymax = settings.ymax;
+        xFactor = settings.xfactor;
+        yFactor = settings.yfactor;
         offset = offsetBox.UserData.value;
         edges = [xmin, xmax, ymin, ymax];
         
@@ -1162,13 +1132,13 @@ function SETfit()
         function recalculateCG(newPos)
             n = cgPeriodBox.UserData.value;
             
-            len = abs(newPos(2,1) - newPos(1,1))*xmaxBox.UserData.factor;
+            len = abs(newPos(2,1) - newPos(1,1))*settings.xfactor;
             
             cg = n*q/len;
             cgBox.UserData.value = cg;
             cgBox.String = num2str(cg/cgBox.UserData.factor, 3);
             
-            x = newPos(1,1)*xmaxBox.UserData.factor;
+            x = newPos(1,1)*settings.xfactor;
             dWidth = len/n;
             offset = mod(x+dWidth/2,dWidth);
             if abs(offset) > abs(offset - dWidth)
@@ -1187,7 +1157,7 @@ function SETfit()
         
         function recalculateCS(newPos)
             m = (newPos(2,2) - newPos(1,2))/(newPos(2,1) - newPos(1,1)) ...
-                * (xmaxBox.UserData.factor/ymaxBox.UserData.factor);
+                * (settings.xfactor/settings.yfactor);
             
             cg = cgBox.UserData.value;
             cs = cg/m - cg;
@@ -1203,7 +1173,7 @@ function SETfit()
         
         function recalculateCD(newPos)
             m = (newPos(2,2) - newPos(1,2))/(newPos(2,1) - newPos(1,1)) ...
-                * (xmaxBox.UserData.factor/ymaxBox.UserData.factor);
+                * (settings.xfactor/settings.yfactor);
             cg = cgBox.UserData.value;
             cd = -cg/m;
             cdBox.UserData.value = cd;
@@ -1233,13 +1203,13 @@ function SETfit()
         if fitCgCheckbox.Value
             newPos = fitCgCheckbox.UserData.fitline.getPosition();
             
-            len = abs(newPos(2,1) - newPos(1,1))*xmaxBox.UserData.factor;
+            len = abs(newPos(2,1) - newPos(1,1))*settings.xfactor;
             
             cg = newNum*q/len;
             cgBox.UserData.value = cg;
             cgBox.String = num2str(cg/cgBox.UserData.factor, 3);
             
-            x = newPos(1,1)*xmaxBox.UserData.factor;
+            x = newPos(1,1)*settings.xfactor;
             dWidth = len/newNum;
             offset = mod(x+dWidth/2,dWidth);
             if abs(offset) > abs(offset - dWidth)
@@ -1439,4 +1409,20 @@ end
 function setBox(h, value)
     h.UserData.value = value;
     h.String = num2str(value/h.UserData.factor);
+end
+
+function factor = unitsToFactor(units)
+    switch units
+        case 'aF'
+            factor = 1e-18;
+        case 'mV'
+            factor = 1e-3;
+        case 'uS'
+            factor = 1e-6;
+        case 'K'
+            factor = 1;
+        otherwise
+            warning(['Unit ''' units ''' not recognized']);
+            factor = 1;
+    end
 end
