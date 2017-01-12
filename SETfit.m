@@ -132,9 +132,16 @@ function SETfit()
         measuredDataFile = settings.measuredDataFile;
         if ~strcmp(measuredDataFile,'') && ~isempty(dir(measuredDataFile))
             measuredData = load(measuredDataFile);
+            
+            % Back up the settings because plotRawMeasuredData() changes them
+            settingsBackup = settings;
+            
             plotRawMeasuredData(measuredData);
             
-            % Update all the axis limits
+            % Reload settings from backup
+            settings = settingsBackup;
+            
+            % Update axis limits from stored data
             setBox(xminBox, settings.xmin);
             setBox(xmaxBox, settings.xmax);
             setBox(yminBox, settings.ymin);
@@ -171,17 +178,18 @@ function SETfit()
             continue;       % If we don't have it move on to the next file
         end
         
-        % If we have a pair of .m and a .dat files load them
+        % Now we have a pair of .m and a .dat files. Load them.
         simParams = load(fullfile(simData_path, file.name), '-mat');
         loadedSimData = load(fullfile(simData_path, datFile.name));
         
         % Plot the data fill in the simulation parameters
         newTab = newSimTab(simTabGroup);
+        newTab.UserData.filename = name;
         h = newTab.UserData.h;
         
         % Plot the new data
-        xs = linspace(simParams.xmin, simParams.xmax, size(loadedSimData,2));
-        ys = linspace(simParams.ymin, simParams.ymax, size(loadedSimData,1));
+        xs = linspace(simParams.xmin/settings.xfactor, simParams.xmax/settings.xfactor, size(loadedSimData,2));
+        ys = linspace(simParams.ymin/settings.yfactor, simParams.ymax/settings.yfactor, size(loadedSimData,1));
         [X,Y] = meshgrid(xs,ys);
         
         pcolor(h.axis, X, Y, loadedSimData/zmaxBox.UserData.factor);
@@ -193,15 +201,21 @@ function SETfit()
         colormap(h.axis, 'jet');
         cb = colorbar(h.axis);
         ylabel(cb, 'G [uS]');
+        caxis(h.axis, [simParams.zmin/settings.zfactor, simParams.zmax/settings.zfactor]);
+        h.linkedZCheckbox.Value = 0;
+        h.sim_zminBox.Enable = 'on';
+        h.sim_zmaxBox.Enable = 'on';
         
         % Update the old simulation labels
-        h.oldSim_cg.String = num2str(h.sim_cgBox.UserData.value/h.sim_cgBox.UserData.factor,3);
-        h.oldSim_cs.String = num2str(h.sim_csBox.UserData.value/h.sim_csBox.UserData.factor,3);
-        h.oldSim_cd.String = num2str(h.sim_cdBox.UserData.value/h.sim_cdBox.UserData.factor,3);
-        h.oldSim_gs.String = num2str(h.sim_gsBox.UserData.value/h.sim_gsBox.UserData.factor,3);
-        h.oldSim_gd.String = num2str(h.sim_gdBox.UserData.value/h.sim_gdBox.UserData.factor,3);
-        h.oldSim_temp.String = num2str(h.sim_tempBox.UserData.value/h.sim_tempBox.UserData.factor,3);
-        h.oldSim_offset.String = num2str(h.sim_offsetBox.UserData.value/h.sim_offsetBox.UserData.factor,3);
+        setBox(h.oldSim_cg, simParams.cg);
+        setBox(h.oldSim_cs, simParams.cs);
+        setBox(h.oldSim_cd, simParams.cd);
+        setBox(h.oldSim_gs, simParams.gs);
+        setBox(h.oldSim_gd, simParams.gd);
+        setBox(h.oldSim_temp, simParams.temp);
+        setBox(h.oldSim_offset, simParams.offset);
+        setBox(h.sim_zminBox, simParams.zmin);
+        setBox(h.sim_zmaxBox, simParams.zmax);
         
         % Calculate sum of residual squares
         if isstruct(dataAxis.UserData)
@@ -235,7 +249,7 @@ function SETfit()
         pcolor(dataAxis,X,Y,Z/settings.zfactor);
         shading(dataAxis,'interp');
         
-        % Update axis limits
+        % Autoscale the x and y axes
         axis(dataAxis, [-inf, inf, -inf, inf]);
         
         % Bring back colorbar
@@ -245,25 +259,25 @@ function SETfit()
         ylabel(dataAxis,'V_D [mV]');
         
         % Update textboxes to show correct limits
-        xminBox.String = '1';           xminBox.UserData.value = 1*settings.xfactor;
-        xmaxBox.String = num2str(nx);   xmaxBox.UserData.value = nx*settings.xfactor;
-        yminBox.String = '1';           yminBox.UserData.value = 1*settings.yfactor;
-        ymaxBox.String = num2str(ny);   ymaxBox.UserData.value = ny*settings.yfactor;
+        setBox(xminBox, 1*settings.yfactor);
+        setBox(xmaxBox, nx*settings.xfactor);
+        setBox(yminBox, 1*settings.xfactor);
+        setBox(ymaxBox, ny*settings.yfactor);
         
         v = caxis(dataAxis);
-        zminBox.String = num2str(v(1)); zminBox.UserData.value = v(1)*settings.zfactor;
-        zmaxBox.String = num2str(v(2)); zmaxBox.UserData.value = v(2)*settings.zfactor;
+        setBox(zminBox, v(1)*settings.zfactor);
+        setBox(zmaxBox, v(2)*settings.zfactor);
         
         % Store the data
         dataAxis.UserData.Z = Z;
-        dataAxis.UserData.xmin = 1*settings.xfactor;
-        dataAxis.UserData.xmax = nx*settings.xfactor;
+        settings.xmin = 1*settings.xfactor;
+        settings.xmax = nx*settings.xfactor;
         dataAxis.UserData.nx = nx;
-        dataAxis.UserData.ymin = 1*settings.yfactor;
-        dataAxis.UserData.ymax = ny*settings.yfactor;
+        settings.ymin = 1*settings.yfactor;
+        settings.ymax = ny*settings.yfactor;
         dataAxis.UserData.ny = ny;
-        dataAxis.UserData.zmin = v(1)*settings.zfactor;
-        dataAxis.UserData.zmax = v(2)*settings.zfactor;
+        settings.zmin = v(1)*settings.zfactor;
+        settings.zmax = v(2)*settings.zfactor;
         
         % Enable ui elements
         xminBox.Enable = 'on';
@@ -553,6 +567,9 @@ function SETfit()
         h = 20;
         lo = -3;
         
+        % Determine factor
+        factor = unitsToFactor(units);
+        
         pVec(2) = pVec(2) + lo;
         
         % Make box
@@ -569,6 +586,10 @@ function SETfit()
                 'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, h], ...
                 'String', [label ' [' units ']' ': ']);
         end
+        
+        % Store data
+        dataHandle.UserData.factor = factor;
+        dataHandle.UserData.value = 0;
     end
     
     function handle = simEntryBox(parent, label, units, pVec)
@@ -624,7 +645,7 @@ function SETfit()
         cb = colorbar(h.axis);
         ylabel(cb, 'G [uS]');
         
-        zmin = settings.zmin / settings.zactor;
+        zmin = settings.zmin / settings.zfactor;
         zmax = settings.zmax / settings.zfactor;
         caxis(h.axis, [zmin, zmax]);
         
@@ -640,30 +661,14 @@ function SETfit()
         tab.UserData.filename = filename;
         mfile = fullfile(simData_path, [filename '.m']);
         
-        % Save .m file of simulation parameters
-        data.cg = h.sim_cgBox.UserData.value;
-        data.cs = h.sim_csBox.UserData.value;
-        data.cd = h.sim_cdBox.UserData.value;
-        data.gs = h.sim_gsBox.UserData.value;
-        data.gd = h.sim_gdBox.UserData.value;
-        data.xmin = settings.xmin;
-        data.xmax = settings.xmax;
-        data.ymin = settings.ymin;
-        data.ymax = settings.ymax;
-        data.zmin = h.sim_zminBox.UserData.value;
-        data.zmax = h.sim_zmaxBox.UserData.value;
-        data.offset = h.sim_offsetBox.UserData.value;
-        data.temp = h.sim_tempBox.UserData.value;   %#ok  it is saved on the next line
-        save(mfile, '-struct', 'data');
-        
         % Update the old simulation labels
-        h.oldSim_cg.String = num2str(h.sim_cgBox.UserData.value/h.sim_cgBox.UserData.factor,3);
-        h.oldSim_cs.String = num2str(h.sim_csBox.UserData.value/h.sim_csBox.UserData.factor,3);
-        h.oldSim_cd.String = num2str(h.sim_cdBox.UserData.value/h.sim_cdBox.UserData.factor,3);
-        h.oldSim_gs.String = num2str(h.sim_gsBox.UserData.value/h.sim_gsBox.UserData.factor,3);
-        h.oldSim_gd.String = num2str(h.sim_gdBox.UserData.value/h.sim_gdBox.UserData.factor,3);
-        h.oldSim_temp.String = num2str(h.sim_tempBox.UserData.value/h.sim_tempBox.UserData.factor,3);
-        h.oldSim_offset.String = num2str(h.sim_offsetBox.UserData.value/h.sim_offsetBox.UserData.factor,3);
+        setBox(h.oldSim_cg, h.sim_cgBox.UserData.value);
+        setBox(h.oldSim_cs, h.sim_csBox.UserData.value);
+        setBox(h.oldSim_cd, h.sim_cdBox.UserData.value);
+        setBox(h.oldSim_gs, h.sim_gsBox.UserData.value);
+        setBox(h.oldSim_gd, h.sim_gdBox.UserData.value);
+        setBox(h.oldSim_temp, h.sim_tempBox.UserData.value);
+        setBox(h.oldSim_offset, h.sim_offsetBox.UserData.value);
         
         % Calculate sum of residual squares
         if isstruct(dataAxis.UserData)
@@ -673,6 +678,10 @@ function SETfit()
         else
             h.oldSim_squ.String = '';
         end
+        
+        % Save .m file of simulation parameters
+        saveTabFile(mfile, tab, settings);
+        
     end
     
     %% Callback Functions
@@ -966,7 +975,23 @@ function SETfit()
     
     % When the figure closes clean some stuff up
     function figureCloseCB(src, ~)
-        save('settings.m', '-struct', 'settings');
+        try
+            % Save main settings
+            save('settings.m', '-struct', 'settings');
+            
+            % Save individual .m files for each plot
+            for i = 1:length(simTabGroup.Children)
+                tab = simTabGroup.Children(i);
+                filename = tab.UserData.filename;
+                mfile = fullfile(simData_path, [filename '.m']);
+                saveTabFile(mfile, tab, settings);
+            end
+        catch
+            % If there was an error, just close the window
+            delete(src);
+        end
+        
+        % Close the figure
         delete(src);
     end
     
@@ -1421,8 +1446,34 @@ function factor = unitsToFactor(units)
             factor = 1e-6;
         case 'K'
             factor = 1;
+        case ''
+            factor = 1;
         otherwise
             warning(['Unit ''' units ''' not recognized']);
             factor = 1;
     end
 end
+
+% Save the specified tab's data in an .m file
+function saveTabFile(mfile, tab, settings)
+    h = tab.UserData.h;
+    
+    data.cg = h.oldSim_cg.UserData.value;
+    data.cs = h.oldSim_cs.UserData.value;
+    data.cd = h.oldSim_cd.UserData.value;
+    data.gs = h.oldSim_gs.UserData.value;
+    data.gd = h.oldSim_gd.UserData.value;
+    data.offset = h.sim_offsetBox.UserData.value;
+    data.temp = h.sim_tempBox.UserData.value;
+    
+    data.xmin = settings.xmin;
+    data.xmax = settings.xmax;
+    data.ymin = settings.ymin;
+    data.ymax = settings.ymax;
+    data.zmin = h.sim_zminBox.UserData.value;
+    data.zmax = h.sim_zmaxBox.UserData.value;   %#ok  it is saved on the next line
+    
+    save(mfile, '-struct', 'data');
+end
+
+
