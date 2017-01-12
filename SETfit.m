@@ -172,6 +172,20 @@ function SETfit()
             setBox(zminBox, settings.zmin);
             setBox(zmaxBox, settings.zmax);
             
+            % Update the fitting parameters
+            if isfield(settings, 'cg')
+                setBox(cgBox, settings.cg);
+            end
+            if isfield(settings, 'cs')
+                setBox(csBox, settings.cs);
+            end
+            if isfield(settings, 'cd')
+                setBox(cdBox, settings.cd);
+            end
+            if isfield(settings, 'offset')
+                setBox(offsetBox, settings.offset);
+            end
+            
             % Replot now that we have everything in order
             refreshDataPlot()
         end
@@ -1019,6 +1033,21 @@ function SETfit()
     % When the figure closes clean some stuff up
     function figureCloseCB(src, ~)
         try
+            % Grab the final remaining settings that aren't constantly
+            % updated in the settingsn struct
+            if ~strcmp(cgBox.String, '')
+                settings.cg = cgBox.UserData.value;
+            end
+            if ~strcmp(csBox.String, '')
+                settings.cs = csBox.UserData.value;
+            end
+            if ~strcmp(cdBox.String, '')
+                settings.cd = cdBox.UserData.value;
+            end
+            if ~strcmp(offsetBox.String, '')
+                settings.offset = offsetBox.UserData.value;
+            end
+            
             % Save the main settings
             save('mainsettings.m', '-struct', 'mainsettings');
             
@@ -1206,8 +1235,8 @@ function SETfit()
             len = abs(newPos(2,1) - newPos(1,1))*settings.xfactor;
             
             cg = n*q/len;
-            cgBox.UserData.value = cg;
-            cgBox.String = num2str(cg/cgBox.UserData.factor, 3);
+            setBox(cgBox, cg);
+            settings.cg = cg;
             
             x = newPos(1,1)*settings.xfactor;
             dWidth = len/n;
@@ -1216,8 +1245,8 @@ function SETfit()
                 offset = offset - dWidth;
             end
             
-            offsetBox.UserData.value = offset;
-            offsetBox.String = num2str(offset/offsetBox.UserData.factor ,3);
+            setBox(offsetBox, offset);
+            settings.offset = offset;
             
             if fitLineCheckbox.Value
                 redrawFittingLines();
@@ -1232,8 +1261,8 @@ function SETfit()
             
             cg = cgBox.UserData.value;
             cs = cg/m - cg;
-            csBox.UserData.value = cs;
-            csBox.String = num2str(cs/csBox.UserData.factor, 3);
+            setBox(csBox, cs)
+            settings.cs = cs;
             
             if fitLineCheckbox.Value
                 redrawFittingLines();
@@ -1247,8 +1276,8 @@ function SETfit()
                 * (settings.xfactor/settings.yfactor);
             cg = cgBox.UserData.value;
             cd = -cg/m;
-            cdBox.UserData.value = cd;
-            cdBox.String = num2str(cd/cdBox.UserData.factor, 3);
+            setBox(cdBox, cd);
+            settings.cd = cd;
             
             if fitLineCheckbox.Value
                 redrawFittingLines();
@@ -1277,8 +1306,6 @@ function SETfit()
             len = abs(newPos(2,1) - newPos(1,1))*settings.xfactor;
             
             cg = newNum*q/len;
-            cgBox.UserData.value = cg;
-            cgBox.String = num2str(cg/cgBox.UserData.factor, 3);
             
             x = newPos(1,1)*settings.xfactor;
             dWidth = len/newNum;
@@ -1287,11 +1314,11 @@ function SETfit()
                 offset = offset - dWidth;
             end
             
-            offsetBox.UserData.value = offset;
-            offsetBox.String = num2str(offset/offsetBox.UserData.factor ,3);
+            setBox(offsetBox, offset);
+            settings.offset = offset;
             
-            cgBox.UserData.value = cg;
-            cgBox.String = cg/cgBox.UserData.factor;
+            setBox(cgBox, cg);
+            settings.cg = cg;
             
             redrawFittingLines();
         end
@@ -1479,7 +1506,7 @@ end
 
 function setBox(h, value)
     h.UserData.value = value;
-    h.String = num2str(value/h.UserData.factor);
+    h.String = num2str(value/h.UserData.factor, 3);
 end
 
 function factor = unitsToFactor(units)
