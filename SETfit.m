@@ -2,7 +2,7 @@ function SETfit()
     
     %% User Parameters
     % Location of the python.exe executable on your system. It is likely in
-    % python_path = 'C:\Python24\python.exe';
+    % python_path = 'C:\Python27\python.exe';
     % Or if it is on your system's path you can just use
     % python_path = 'python.exe';
     % I have a nonstandard install location, this should be changed for
@@ -165,12 +165,12 @@ function SETfit()
             settings = settingsBackup;
             
             % Update axis limits from stored data
-            setBox(xminBox, settings.xmin);
-            setBox(xmaxBox, settings.xmax);
-            setBox(yminBox, settings.ymin);
-            setBox(ymaxBox, settings.ymax);
-            setBox(zminBox, settings.zmin);
-            setBox(zmaxBox, settings.zmax);
+            setBox(xminBox, settings.xmin, 4);
+            setBox(xmaxBox, settings.xmax, 4);
+            setBox(yminBox, settings.ymin, 4);
+            setBox(ymaxBox, settings.ymax, 4);
+            setBox(zminBox, settings.zmin, 4);
+            setBox(zmaxBox, settings.zmax, 4);
             
             % Update the fitting parameters
             if isfield(settings, 'cg')
@@ -299,14 +299,14 @@ function SETfit()
         ylabel(dataAxis,'V_D [mV]');
         
         % Update textboxes to show correct limits
-        setBox(xminBox, 1*settings.yfactor);
-        setBox(xmaxBox, nx*settings.xfactor);
-        setBox(yminBox, 1*settings.xfactor);
-        setBox(ymaxBox, ny*settings.yfactor);
+        setBox(xminBox, 1*settings.yfactor, 4);
+        setBox(xmaxBox, nx*settings.xfactor, 4);
+        setBox(yminBox, 1*settings.xfactor, 4);
+        setBox(ymaxBox, ny*settings.yfactor, 4);
         
         v = caxis(dataAxis);
-        setBox(zminBox, v(1)*settings.zfactor);
-        setBox(zmaxBox, v(2)*settings.zfactor);
+        setBox(zminBox, v(1)*settings.zfactor, 4);
+        setBox(zmaxBox, v(2)*settings.zfactor, 4);
         
         % Store the data
         dataAxis.UserData.Z = Z;
@@ -933,8 +933,7 @@ function SETfit()
         % Copy data but only if something has been entered into that box
         function copyBox(src, dest)
             if ~strcmp(src.String, '')
-                dest.UserData.value = src.UserData.value;
-                dest.String = num2str(dest.UserData.value/dest.UserData.factor);
+                setBox(dest, src.UserData.value);
             end
         end
         
@@ -1504,9 +1503,14 @@ function enableDisableSimParams(h, state)
     h.runSimButton.Enable = state;
 end
 
-function setBox(h, value)
+function setBox(h, value, varargin)
+    if nargin > 2
+        sigFigs = varargin{1};
+    else
+        sigFigs = 3;
+    end
     h.UserData.value = value;
-    h.String = num2str(value/h.UserData.factor, 3);
+    h.String = num2str(value/h.UserData.factor, sigFigs);
 end
 
 function factor = unitsToFactor(units)
@@ -1538,8 +1542,8 @@ function saveTabFile(mfile, tab, settings)
     data.cd = h.oldSim_cd.UserData.value;
     data.gs = h.oldSim_gs.UserData.value;
     data.gd = h.oldSim_gd.UserData.value;
-    data.offset = h.sim_offsetBox.UserData.value;
-    data.temp = h.sim_tempBox.UserData.value;
+    data.offset = h.oldSim_offset.UserData.value;
+    data.temp = h.oldSim_temp.UserData.value;
     
     data.xmin = settings.xmin;
     data.xmax = settings.xmax;
