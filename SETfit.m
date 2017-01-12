@@ -18,15 +18,38 @@ function SETfit()
     G0 = 7.7480917346e-5;   % Conductance quantum in Siemens;
     
     %% Create the GUI
-    % Load settings file. If there is no settings file, copy
-    % 'settings.m.default' and use that
-    if isempty(dir('settings.m'))
-        copyfile('settings.m.default', 'settings.m');
-    end
-    settings = load('settings.m', '-mat');
+    % Prompt the user for the project path
+    project_path = uigetdir('', 'Select Project Directory');
     
-    % Load the path to the folder that holds all the simulation files
-    simData_path = settings.simData_path;
+    % If the user selected cancel, load the most recent project from the
+    % mainsettings.m file. If that doesn't exist, open the defaultProject.
+    if project_path == 0
+        if isempty(dir('mainsettings.m'))
+            mainsettings = struct('project_path', 'defaultProject');
+        else
+            mainsettings = load('mainsettings.m', '-mat');
+        end
+        project_path = mainsettings.project_path;
+    else
+        mainsettings.project_path = project_path;       %#ok we save this later
+    end
+    
+    % Load project settings file. If there is no settings file create a
+    % struct that we can save later. (We want a struct either way)
+    if isempty(dir(fullfile(project_path, 'settings.m')))
+        settings = struct('simData_path', 'simulations');
+    else
+        settings = load(fullfile(project_path, 'settings.m'), '-mat');
+    end
+    
+    % Load the path to the folder that holds all the simulation files and
+    % make it relative to the project directory.
+    simData_path = fullfile(project_path, settings.simData_path);
+    
+    % If the simData_path doesn't exist, we should create it
+    if isempty(dir(simData_path))
+        mkdir(simData_path);
+    end
     
     % Create main figure
     figWidth = 1200;      % Pixels
@@ -130,8 +153,8 @@ function SETfit()
     %% Load measured data file
     if isfield(settings, 'measuredDataFile')
         measuredDataFile = settings.measuredDataFile;
-        if ~strcmp(measuredDataFile,'') && ~isempty(dir(measuredDataFile))
-            measuredData = load(measuredDataFile);
+        if ~strcmp(measuredDataFile,'') && ~isempty(dir(fullfile(project_path, measuredDataFile)))
+            measuredData = load(fullfile(project_path, measuredDataFile));
             
             % Back up the settings because plotRawMeasuredData() changes them
             settingsBackup = settings;
@@ -421,6 +444,9 @@ function SETfit()
         ylabel(h, 'G [uS]');
         colormap(h, 'jet');
         
+        filenameLabel = uicontrol(simTab, 'Style', 'text', 'Units', 'pixels', ...
+            'Position', [0, figHeight-60, figWidth/2, 20]);
+        
         sim_zminBox = simLimitsBox(simTab, 'zmin', 0, 'uS', [figCenter-textWidth-10,axisPos(2)-textHeight/2+bottomMargin,textWidth,textHeight]);
         sim_zmaxBox = simLimitsBox(simTab, 'zmax', 1, 'uS', [figCenter-textWidth-10,axisPos(2)+axisPos(4)-textHeight/2+bottomMargin,textWidth,textHeight]);
         
@@ -464,6 +490,7 @@ function SETfit()
         
         % Store appropriate handles in the tab's UserData
         simTab.UserData.h.axis = ax;
+        simTab.UserData.h.filenameLabel = filenameLabel;
         simTab.UserData.h.sim_cgBox = sim_cgBox;
         simTab.UserData.h.sim_csBox = sim_csBox;
         simTab.UserData.h.sim_cdBox = sim_cdBox;
@@ -670,6 +697,9 @@ function SETfit()
         setBox(h.oldSim_temp, h.sim_tempBox.UserData.value);
         setBox(h.oldSim_offset, h.sim_offsetBox.UserData.value);
         
+        % Update displayed filename
+        h.filenameLabel.String = fullfile(simData_path, filename);
+        
         % Calculate sum of residual squares
         if isstruct(dataAxis.UserData)
             zfactor = settings.zfactor;
@@ -701,7 +731,7 @@ function SETfit()
     
     % Handles the callback for loading a new measured data file
     function loadDataFileCB(~, ~)
-        [FileName,PathName] = uigetfile({'*.*';'*.dat'});
+        [FileName,PathName] = uigetfile({'*.*', '*.dat'}, 'Select Measurement File', project_path);
         
         % If the user cancelled the dialog
         if FileName == 0 
@@ -976,8 +1006,11 @@ function SETfit()
     % When the figure closes clean some stuff up
     function figureCloseCB(src, ~)
         try
-            % Save main settings
-            save('settings.m', '-struct', 'settings');
+            % Save the main settings
+            save('mainsettings.m', '-struct', 'mainsettings');
+            
+            % Save project settings
+            save(fullfile(project_path, 'settings.m'), '-struct', 'settings');
             
             % Save individual .m files for each plot
             for i = 1:length(simTabGroup.Children)

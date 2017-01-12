@@ -2,6 +2,7 @@
 *.asv
 *.dat
 settings.m
+mainsettings.m
 *simulations/*
 *SETsimulator/
 !SETsimulator/guidiamonds.py
