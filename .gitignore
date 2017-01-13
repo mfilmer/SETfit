@@ -4,6 +4,6 @@ testData/*
 settings.mat
 mainsettings.mat
 */simulations/*
-*Project/*
+projects/*
 SETsimulator/*
 !SETsimulator/guidiamonds.py

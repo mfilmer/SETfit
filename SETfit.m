@@ -13,19 +13,22 @@ function SETfit()
     % Location of the simulator .py file
     simulator_path = 'SETsimulator\guidiamonds.py';
     
+    % Directory we expect project directories to be in
+    main_project_dir = 'projects\';
+    
     %% Constants
     q = 1.602e-19;          % Coulombs
     G0 = 7.7480917346e-5;   % Conductance quantum in Siemens;
     
     %% Create the GUI
     % Prompt the user for the project path
-    project_path = uigetdir('', 'Select Project Directory');
+    project_path = uigetdir(main_project_dir, 'Select Project Directory');
     
     % If the user selected cancel, load the most recent project from the
     % mainsettings.mat file. If that doesn't exist, open the defaultProject.
     if project_path == 0
         if isempty(dir('mainsettings.mat'))
-            mainsettings = struct('project_path', 'defaultProject');
+            mainsettings = struct('project_path', fullfile(main_project_dir, 'default'));
         else
             mainsettings = load('mainsettings.mat', '-mat');
         end
