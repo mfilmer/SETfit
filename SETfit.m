@@ -1023,11 +1023,20 @@ function SETfit()
         Cd = num2str(h.sim_cdBox.UserData.value);
         Gs = num2str(h.sim_gsBox.UserData.value/G0);
         Gd = num2str(h.sim_gdBox.UserData.value/G0);
-        num_e = num2str(5);
-        vg_start = num2str((settings.xmin-offset) * 1e3);   % mV
-        vg_end = num2str((settings.xmax-offset) * 1e3);     % mV
+        start = settings.xmin - offset;
+        stop = settings.xmax - offset;
+        center = (start + stop)/2;
+        Cg = h.sim_cgBox.UserData.value;
+        period = q/Cg;
+        pShift = round(center/period)*period;
+        start = start - pShift;
+        stop = stop - pShift;
+        vg_start = num2str(start * 1e3);   % mV
+        vg_end = num2str(stop * 1e3);     % mV
+        num_e = ceil((stop-start)/(period*2)) + 1;
+        num_e = num2str(num_e);
         numVgpoints = num2str(101);
-        Cg = num2str(h.sim_cgBox.UserData.value);
+        Cg = num2str(Cg);
         T = num2str(h.sim_tempBox.UserData.value);
         
         % Run the python simulator
