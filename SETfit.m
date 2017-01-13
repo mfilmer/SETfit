@@ -1658,7 +1658,7 @@ function saveTabFile(mfile, tab, settings)
     save(mfile, '-struct', 'data');
 end
 
-% Try to automatically calculate Cg given
+% Try to automatically calculate Cg and offset given the following:
 % Z: Matrix containing coulomb diamonds. Rows -> Vd, Cols -> Vg
 % vgs: Vector of the values of Vg that correspond to the columns of Z
 % vds: Vector of the values of Vd that correspond to the rows of Z
