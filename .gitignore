@@ -1,8 +1,8 @@
 
 *.asv
 testData/*
-settings.m
-mainsettings.m
+settings.mat
+mainsettings.mat
 */simulations/*
 SETsimulator/*
 !SETsimulator/guidiamonds.py

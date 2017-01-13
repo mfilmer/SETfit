@@ -22,12 +22,12 @@ function SETfit()
     project_path = uigetdir('', 'Select Project Directory');
     
     % If the user selected cancel, load the most recent project from the
-    % mainsettings.m file. If that doesn't exist, open the defaultProject.
+    % mainsettings.mat file. If that doesn't exist, open the defaultProject.
     if project_path == 0
-        if isempty(dir('mainsettings.m'))
+        if isempty(dir('mainsettings.mat'))
             mainsettings = struct('project_path', 'defaultProject');
         else
-            mainsettings = load('mainsettings.m', '-mat');
+            mainsettings = load('mainsettings.mat', '-mat');
         end
         project_path = mainsettings.project_path;
     else
@@ -36,10 +36,10 @@ function SETfit()
     
     % Load project settings file. If there is no settings file create a
     % struct that we can save later. (We want a struct either way)
-    if isempty(dir(fullfile(project_path, 'settings.m')))
+    if isempty(dir(fullfile(project_path, 'settings.mat')))
         settings = struct('simData_path', 'simulations');
     else
-        settings = load(fullfile(project_path, 'settings.m'), '-mat');
+        settings = load(fullfile(project_path, 'settings.mat'), '-mat');
     end
     
     % Load the path to the folder that holds all the simulation files and
@@ -204,7 +204,7 @@ function SETfit()
     
     %% Load existing simulations from the folder. If there is none, create an empty tab
     numLoadedSims = 0;
-    fileList = dir(fullfile(simData_path, '*.m'));
+    fileList = dir(fullfile(simData_path, '*.mat'));
     for fileIndex = 1:length(fileList)
         file = fileList(fileIndex);
         [pathstr, name, ~] = fileparts(file.name);
@@ -215,7 +215,7 @@ function SETfit()
             continue;       % If we don't have it move on to the next file
         end
         
-        % Now we have a pair of .m and a .dat files. Load them.
+        % Now we have a pair of .mat and a .dat files. Load them.
         simParams = load(fullfile(simData_path, file.name), '-mat');
         loadedSimData = load(fullfile(simData_path, datFile.name));
         
@@ -699,14 +699,14 @@ function SETfit()
         % Delete the old file if one exists
         if isfield(tab.UserData, 'filename')
             oldFilename = tab.UserData.filename;
-            mfile = fullfile(simData_path, [oldFilename '.m']);
+            mfile = fullfile(simData_path, [oldFilename '.mat']);
             datfile = fullfile(simData_path, [oldFilename '.dat']);
             delete(mfile, datfile);
         end
         
         % Store new file information
         tab.UserData.filename = filename;
-        mfile = fullfile(simData_path, [filename '.m']);
+        mfile = fullfile(simData_path, [filename '.mat']);
         
         % Update the old simulation labels
         setBox(h.oldSim_cg, h.sim_cgBox.UserData.value);
@@ -729,7 +729,7 @@ function SETfit()
             h.oldSim_squ.String = '';
         end
         
-        % Save .m file of simulation parameters
+        % Save .mat file of simulation parameters
         saveTabFile(mfile, tab, settings);
         
     end
@@ -1048,16 +1048,16 @@ function SETfit()
             end
             
             % Save the main settings
-            save('mainsettings.m', '-struct', 'mainsettings');
+            save('mainsettings.mat', '-struct', 'mainsettings');
             
             % Save project settings
-            save(fullfile(project_path, 'settings.m'), '-struct', 'settings');
+            save(fullfile(project_path, 'settings.mat'), '-struct', 'settings');
             
-            % Save individual .m files for each plot
+            % Save individual .mat files for each plot
             for i = 1:length(simTabGroup.Children)
                 tab = simTabGroup.Children(i);
                 filename = tab.UserData.filename;
-                mfile = fullfile(simData_path, [filename '.m']);
+                mfile = fullfile(simData_path, [filename '.mat']);
                 saveTabFile(mfile, tab, settings);
             end
         catch
@@ -1531,7 +1531,7 @@ function factor = unitsToFactor(units)
     end
 end
 
-% Save the specified tab's data in an .m file
+% Save the specified tab's data in an .mat file
 function saveTabFile(mfile, tab, settings)
     h = tab.UserData.h;
     
