@@ -809,9 +809,9 @@ function SETfit()
             % exactly line.theta is... Anyway, it seems to work so I guess
             % I'm going to keep it like this.
             if line.theta > minAngle && line.theta < maxAngle
-                drainLines(end+1) = line;
+                drainLines(end+1) = line;       %#ok
             elseif line.theta < -minAngle && line.theta > -maxAngle
-                sourceLines(end+1) = line;
+                sourceLines(end+1) = line;      %#ok
             end
         end
         

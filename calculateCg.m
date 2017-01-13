@@ -12,9 +12,16 @@ function Cg = calculateCg(Z, vgs, vds)
     C = xcorr(Z(vdIndex, :));
     [value, locs] = findpeaks(C);
     
+    i1 = find(value == max(value),1);
+    
+    value(i1) = 0;
     i2 = find(value == max(value),1);
-    i1 = i2 - 1;
-    i3 = i2 + 1;
+    i3 = i1 + 2*(i2 - i1);
+    
+    is = sort([i1 i2 i3]);
+    i1 = is(1);
+    i2 = is(2);
+    i3 = is(3);
     
     p1 = locs(i3) - locs(i2);
     p2 = locs(i2) - locs(i1);
