@@ -109,7 +109,7 @@ function SETfit()
     
     % Create data manipulation UI elements in the fitLines panel
     fitLinesPanel = uipanel(settingsPanel, 'Units', 'pixels', ...
-        'Position', [340,10,250,bottomMargin-15], 'Title', 'Fitting Lines');
+        'Position', [340,10,250,bottomMargin-15], 'Title', 'Fitting Values');
     cgBox = entryBox(fitLinesPanel, 'Cg', 'aF', [100, 44, 35, 20]);
     csBox = entryBox(fitLinesPanel, 'Cs', 'aF', [185, 44, 35, 20]);
     cdBox = entryBox(fitLinesPanel, 'Cd', 'aF', [185, 14, 35, 20]);
@@ -129,7 +129,7 @@ function SETfit()
     
     % Panel containing buttons to graphically fit the diamonds
     fittingToolsPanel = uipanel(settingsPanel, 'Units', 'pixels', ...
-        'Position', [10,10,130, bottomMargin-15], 'Title', 'Fitting Tools');
+        'Position', [10,10,130, bottomMargin-15], 'Title', 'Manual Fitting');
     fitCgCheckbox = uicontrol(fittingToolsPanel, 'Style', 'checkbox', 'Units', 'pixels', ...
         'Position', [10,43,50,20], 'String', '<html>Fit C<sub>G</sub></html>', ...
         'Tag', 'cg', 'Callback', @fitCheckboxCB, 'Enable', 'off');
@@ -145,6 +145,13 @@ function SETfit()
     fitCdCheckbox = uicontrol(fittingToolsPanel, 'Style', 'checkbox', 'Units', 'pixels', ...
         'Position', [70,13,50,20], 'String', '<html>Fit C<sub>D</sub></html>', ...
         'Tag', 'cd', 'Callback', @fitCheckboxCB, 'Enable', 'off');
+    
+    % Panel for automatic fitting
+    autoFitToolsPanel = uipanel(settingsPanel, 'Units', 'pixels', ...
+        'Position', [160,10,70,bottomMargin-15], 'Title', 'Auto Fit');
+    autoFitCgButton = uicontrol(autoFitToolsPanel, 'Units', 'pixels', ...
+        'Position', [10,43,50,20], 'String', 'Fit Cg', 'Enable', 'off', ...
+        'Callback', @autoFitCg);
     
     % Create new tab tab. The tab that creates a new tab when it is opened
     newTabTab = uitab('Parent', simTabGroup, 'Title', '+', 'Tag', '+');
@@ -337,6 +344,7 @@ function SETfit()
         fitCsCheckbox.Enable = 'on';
         fitCdCheckbox.Enable = 'on';
         cgPeriodBox.Enable = 'on';
+        autoFitCgButton.Enable = 'on';
         
         autoscaleButton.Enable = 'on';
     end
@@ -764,6 +772,15 @@ function SETfit()
         syncZAxis();
         
         settings.measuredDataFile = FileName;
+    end
+    
+    % Automatically calculate the gate capacitancen from plotted data
+    function autoFitCg(~,~)
+        vgs = linspace(settings.xmin, settings.xmax, size(Z,2));
+        vds = linspace(settings.ymin, settings.ymax, size(Z,1));
+        Cg = calculateCg(Z, vgs, vds);
+        
+        setBox(cgBox, Cg);
     end
     
     % Recalculate z axis limits based on data
