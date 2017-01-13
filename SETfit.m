@@ -786,9 +786,10 @@ function SETfit()
     function autoFitCg(~,~)
         vgs = linspace(settings.xmin, settings.xmax, size(Z,2));
         vds = linspace(settings.ymin, settings.ymax, size(Z,1));
-        Cg = calculateCg(Z, vgs, vds);
+        [Cg, offset] = calculateCg(Z, vgs, vds);
         
         setBox(cgBox, Cg);
+        setBox(offsetBox, offset);
     end
     
     % Automatically calculate the source or drain capacitances
@@ -1661,33 +1662,39 @@ end
 % Z: Matrix containing coulomb diamonds. Rows -> Vd, Cols -> Vg
 % vgs: Vector of the values of Vg that correspond to the columns of Z
 % vds: Vector of the values of Vd that correspond to the rows of Z
-function Cg = calculateCg(Z, vgs, vds)
+function [Cg, offset] = calculateCg(Z, vgs, vds)
     % Constants
     q = 1.602e-19;      % Coulombs
     
     % Get the row closest to Vd = 0
     vdIndex = round(interp1(vds, 1:length(vds), 0, 'pchip'));
+    zrow = Z(vdIndex, :);
     
-    C = xcorr(Z(vdIndex, :));
+    C = xcorr(zrow);
     [value, locs] = findpeaks(C);
     
     i1 = find(value == max(value),1);
     
     value(i1) = 0;
     i2 = find(value == max(value),1);
-    i3 = i1 + 2*(i2 - i1);
     
-    is = sort([i1 i2 i3]);
+    is = sort([i1 i2]);
     i1 = is(1);
     i2 = is(2);
-    i3 = is(3);
     
-    p1 = locs(i3) - locs(i2);
-    p2 = locs(i2) - locs(i1);
-    period = (p2 + p1)/2;
+    period = locs(i2) - locs(i1);
     
     vg_step = vgs(2) - vgs(1);
     
     Cg = q/(period*vg_step);
+    
+    % Find offset
+    node = find(zrow == max(zrow),1);
+    node = vgs(node);
+    dWidth = q/Cg;
+    offset = mod(node+dWidth/2,dWidth);
+    if abs(offset) > abs(offset - dWidth)
+        offset = offset - dWidth;
+    end
 end
 
