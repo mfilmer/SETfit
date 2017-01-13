@@ -150,8 +150,14 @@ function SETfit()
     autoFitToolsPanel = uipanel(settingsPanel, 'Units', 'pixels', ...
         'Position', [160,10,70,bottomMargin-15], 'Title', 'Auto Fit');
     autoFitCgButton = uicontrol(autoFitToolsPanel, 'Units', 'pixels', ...
-        'Position', [10,43,50,20], 'String', 'Fit Cg', 'Enable', 'off', ...
+        'Position', [10,47,50,20], 'String', 'Fit Cg', 'Enable', 'off', ...
         'Callback', @autoFitCg);
+    autoFitCsButton = uicontrol(autoFitToolsPanel, 'Units', 'pixels', ...
+        'Position', [10,27,50,20], 'String', 'Fit Cs', 'Enable', 'off', ...
+        'Callback', @autoFitC, 'Tag', 'Cs');
+    autoFitCdButton = uicontrol(autoFitToolsPanel, 'Units', 'pixels', ...
+        'Position', [10,7,50,20], 'String', 'Fit Cd', 'Enable', 'off', ...
+        'Callback', @autoFitC, 'Tag', 'Cd');
     
     % Create new tab tab. The tab that creates a new tab when it is opened
     newTabTab = uitab('Parent', simTabGroup, 'Title', '+', 'Tag', '+');
@@ -345,6 +351,8 @@ function SETfit()
         fitCdCheckbox.Enable = 'on';
         cgPeriodBox.Enable = 'on';
         autoFitCgButton.Enable = 'on';
+        autoFitCsButton.Enable = 'on';
+        autoFitCdButton.Enable = 'on';
         
         autoscaleButton.Enable = 'on';
     end
@@ -783,6 +791,69 @@ function SETfit()
         setBox(cgBox, Cg);
     end
     
+    % Automatically calculate the source or drain capacitances
+    function autoFitC(src,~)
+        % Find the lines
+        BW = edge(Z, 'canny');
+        [H,theta,rho] = hough(BW);
+        P = houghpeaks(H,10);
+        lines = houghlines(BW,theta,rho,P,'FillGap',20,'MinLength',5);
+        
+        % Filter and sort the lines
+        sourceLines = struct('point1',{},'point2',{},'theta',{},'rho',{});
+        drainLines = struct('point1',{},'point2',{},'theta',{},'rho',{});
+        minAngle = 10;      % Degrees
+        maxAngle = 80;      % Degrees
+        for line = lines
+            % These seem backward to me, so I guess I don't understand what
+            % exactly line.theta is... Anyway, it seems to work so I guess
+            % I'm going to keep it like this.
+            if line.theta > minAngle && line.theta < maxAngle
+                drainLines(end+1) = line;
+            elseif line.theta < -minAngle && line.theta > -maxAngle
+                sourceLines(end+1) = line;
+            end
+        end
+        
+        switch src.Tag
+            case 'Cs'
+                theseLines = sourceLines;
+                thisBox = csBox;
+            case 'Cd'
+                theseLines = drainLines;
+                thisBox = cdBox;
+        end
+        
+        % Calculate capacitances
+        caps = arrayfun(@calcCap, theseLines);
+        C = median(caps);
+        
+        setBox(thisBox, C);
+        
+        function cap = calcCap(line)
+            point1 = line.point1;
+            point2 = line.point2;
+            
+            xStep = (settings.xmax-settings.xmin)/(size(Z,2)-1);
+            yStep = (settings.ymax-settings.ymin)/(size(Z,1)-1);
+            
+            x1 = point1(1) * xStep;
+            x2 = point2(1) * xStep;
+            y1 = point1(2) * yStep;
+            y2 = point2(2) * yStep;
+            
+            m = (y2-y1)/(x2-x1);
+            
+            if m > 0        % Cs
+                cap = cgBox.UserData.value/m - cgBox.UserData.value;
+            elseif m < 0    % Cd
+                cap = -cgBox.UserData.value/m;
+            else
+                cap = 0;
+            end
+        end
+    end
+    
     % Recalculate z axis limits based on data
     function autoscaleZCallback(~, ~)
         zmin = min(min(dataAxis.UserData.Z));
@@ -1023,6 +1094,11 @@ function SETfit()
         Cd = num2str(h.sim_cdBox.UserData.value);
         Gs = num2str(h.sim_gsBox.UserData.value/G0);
         Gd = num2str(h.sim_gdBox.UserData.value/G0);
+        
+        % Shift the simulated Vgs values by n*q/Cg to try and center (as
+        % close as possible) around Vg = 0. This will minimize the number
+        % of electrons we need to simulate. Then calculate how many
+        % electrons we need to simulate.
         start = settings.xmin - offset;
         stop = settings.xmax - offset;
         center = (start + stop)/2;
