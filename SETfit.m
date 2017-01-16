@@ -151,16 +151,19 @@ function SETfit()
     
     % Panel for automatic fitting
     autoFitToolsPanel = uipanel(settingsPanel, 'Units', 'pixels', ...
-        'Position', [160,10,70,bottomMargin-15], 'Title', 'Auto Fit');
+        'Position', [160,10,160,bottomMargin-15], 'Title', 'Auto Fit');
     autoFitCgButton = uicontrol(autoFitToolsPanel, 'Units', 'pixels', ...
         'Position', [10,47,50,20], 'String', 'Fit Cg', 'Enable', 'off', ...
-        'Callback', @autoFitCg);
+        'Callback', @autoFitCgCB);
     autoFitCsButton = uicontrol(autoFitToolsPanel, 'Units', 'pixels', ...
         'Position', [10,27,50,20], 'String', 'Fit Cs', 'Enable', 'off', ...
-        'Callback', @autoFitC, 'Tag', 'Cs');
+        'Callback', @autoFitCCB, 'Tag', 'Cs');
     autoFitCdButton = uicontrol(autoFitToolsPanel, 'Units', 'pixels', ...
         'Position', [10,7,50,20], 'String', 'Fit Cd', 'Enable', 'off', ...
-        'Callback', @autoFitC, 'Tag', 'Cd');
+        'Callback', @autoFitCCB, 'Tag', 'Cd');
+    feelingLuckyButton = uicontrol(autoFitToolsPanel, 'Units', 'pixels', ...
+        'Position', [70,7,75,60], 'Callback', @feelingLucky, ...
+        'Enable', 'off', 'String', '<html><center>I''m<br>Feeling<br>Lucky</center></html>');
     
     % Create new tab tab. The tab that creates a new tab when it is opened
     newTabTab = uitab('Parent', simTabGroup, 'Title', '+', 'Tag', '+');
@@ -261,6 +264,7 @@ function SETfit()
         h.linkedZCheckbox.Value = 0;
         h.sim_zminBox.Enable = 'on';
         h.sim_zmaxBox.Enable = 'on';
+        h.solveButton.Enable = 'on';
         
         % Update the old simulation labels
         setBox(h.oldSim_cg, simParams.cg);
@@ -356,6 +360,7 @@ function SETfit()
         autoFitCgButton.Enable = 'on';
         autoFitCsButton.Enable = 'on';
         autoFitCdButton.Enable = 'on';
+        feelingLuckyButton.Enable = 'on';
         
         autoscaleButton.Enable = 'on';
     end
@@ -490,6 +495,10 @@ function SETfit()
             'Position', [figCenter-87,10+bottomMargin,75,20], 'String', 'Linked Z', ...
             'Callback', @linkedZCallback, 'Value', 1);
         
+        solveButton = uicontrol(simTab, 'Style', 'pushbutton', 'Units', 'pixels', ...
+            'Position', [10,bottomMargin + 10,50,20], 'String', 'Solve', ...
+            'Callback', @iterateButtonCB, 'Enable', 'off');
+        
         % Create a pannel to hold the previously ran simulation parameters
         oldSimParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
             'Position', [10,10,230,bottomMargin-15], 'Title', 'Current Simulation');
@@ -548,6 +557,7 @@ function SETfit()
         simTab.UserData.h.sim_zminBox = sim_zminBox;
         simTab.UserData.h.sim_zmaxBox = sim_zmaxBox;
         simTab.UserData.h.linkedZCheckbox = linkedZCheckbox;
+        simTab.UserData.h.solveButton = solveButton;
         
         % Reorganize tabs
         allTabs(end) = simTab;
@@ -643,11 +653,11 @@ function SETfit()
         if strcmp(units, '')
             uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
                 'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, h], ...
-                'String', [label ': ']);
+                'String', [label ':']);
         else
             uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
                 'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, h], ...
-                'String', [label ' [' units ']' ': ']);
+                'String', [label ' [' units ']' ':']);
         end
         
         % Store data
@@ -786,7 +796,11 @@ function SETfit()
     end
     
     % Automatically calculate the gate capacitancen from plotted data
-    function autoFitCg(~,~)
+    function autoFitCgCB(~,~)
+        autoFitCg();
+    end
+    
+    function autoFitCg()
         vgs = linspace(settings.xmin, settings.xmax, size(Z,2));
         vds = linspace(settings.ymin, settings.ymax, size(Z,1));
         [Cg, offset] = calculateCg(Z, vgs, vds);
@@ -796,7 +810,16 @@ function SETfit()
     end
     
     % Automatically calculate the source or drain capacitances
-    function autoFitC(src,~)
+    function autoFitCCB(src,~)
+        switch src.Tag
+            case 'Cs'
+                autoFitC('Cs');
+            case 'Cd'
+                autoFitC('Cd');
+        end
+    end
+    
+    function autoFitC(tag)
         % Find the lines
         BW = edge(Z, 'canny');
         [H,theta,rho] = hough(BW);
@@ -819,7 +842,7 @@ function SETfit()
             end
         end
         
-        switch src.Tag
+        switch tag
             case 'Cs'
                 theseLines = sourceLines;
                 thisBox = csBox;
@@ -856,6 +879,65 @@ function SETfit()
                 cap = 0;
             end
         end
+    end
+    
+    % Automatically fit everything
+    function feelingLucky(~,~)
+        autoFitCg();
+        autoFitC('Cs');
+        autoFitC('Cd');
+        
+        % Estimate Gs and Gd
+        maxG = prctile(dataAxis.UserData.Z(:), 95);
+        
+        Gs = maxG*4;
+        Gd = maxG*4;
+        
+        % Copy values into simulation tab
+        thisTab = simTabGroup.SelectedTab;
+        h = thisTab.UserData.h;
+        
+        % Copy over all the data we need
+        copyBox(cgBox, h.sim_cgBox);
+        copyBox(csBox, h.sim_csBox);
+        copyBox(cdBox, h.sim_cdBox);
+        copyBox(offsetBox, h.sim_offsetBox);
+        
+        % Copy data but only if something has been entered into that box
+        function copyBox(src, dest)
+            if ~strcmp(src.String, '')
+                setBox(dest, src.UserData.value);
+            end
+        end
+        
+        setBox(h.sim_gsBox, Gs);
+        setBox(h.sim_gdBox, Gd);
+        
+        enableDisableRunButton(h);
+        
+        % Run the simulation
+        runSim(thisTab);
+    end
+    
+    % Try to improve the fit by iterating
+    function iterateButtonCB(src,~)
+        tab = src.Parent;
+        h = tab.UserData.h;
+        
+        filename = tab.UserData.filename;
+        simFile = fullfile(simData_path, [filename '.dat']);
+        
+        limits = [settings.xmin, settings.xmax, settings.ymin, settings.ymax, settings.zmin, settings.zmax];
+        
+        startingParams = struct('Cg', h.oldSim_cg.UserData.value, ...
+                                'Cs', h.oldSim_cs.UserData.value, ...
+                                'Cd', h.oldSim_cd.UserData.value, ...
+                                'Gs', h.oldSim_gs.UserData.value, ...
+                                'Gd', h.oldSim_gd.UserData.value, ...
+                                'offset', h.oldSim_offset.UserData.value, ...
+                                'T', h.oldSim_temp.UserData.value);
+        
+        [finalZ, finalParams] = iteratorLauncher(dataAxis.UserData.Z, simFile, limits, startingParams);
     end
     
     % Recalculate z axis limits based on data
@@ -1083,7 +1165,11 @@ function SETfit()
     
     % Actually run the simulation
     function runSimCB(src, ~)
-        h = src.Parent.Parent.Parent.UserData.h;
+        runSim(src.Parent.Parent.Parent);
+    end
+    
+    function runSim(tab)
+        h = tab.UserData.h;
         
         % Disable simulation parameters while the sim is running
         enableDisableSimParams(h, 'off');
@@ -1129,10 +1215,13 @@ function SETfit()
         disp(['Simulation Output: ' result])
         Z = load(fullfile(simData_path, datfile));
         
-        handleNewSimData(Z, src.Parent.Parent.Parent, filename);
+        handleNewSimData(Z, tab, filename);
         
         % Re-enable the sim parameters
         enableDisableSimParams(h, 'on');
+        
+        % Enable the iterate button
+        h.solveButton.Enable = 'on';
     end
     
     % When the figure closes clean some stuff up
@@ -1572,28 +1661,6 @@ end
 % simulation
 function filename = makeFileName()
     filename = datestr(datetime(), 'yyyymmmdd_HH.MM.SS');
-end
-
-% Calculate the sum of the squared residuals between two datasets.
-% If they are of different sizes, Z2 is resampled to match Z1. Therefore,
-% Z1 should generally be the measured data and Z2 the simulation data.
-function S = calcSquares(Z1, Z2)
-    nx1 = size(Z1, 2);
-    ny1 = size(Z1, 1);
-    nx2 = size(Z2, 2);
-    ny2 = size(Z2, 1);
-    
-    xs1 = linspace(0,1,nx1);
-    ys1 = linspace(0,1,ny1);
-    xs2 = linspace(0,1,nx2);
-    ys2 = linspace(0,1,ny2);
-    [X1, Y1] = meshgrid(xs1, ys1);
-    [X2, Y2] = meshgrid(xs2, ys2);
-    
-    Z2_interp = interp2(X2, Y2, Z2, X1, Y1, 'spline');
-    
-    r = (Z1-Z2_interp).^2;
-    S = sum(sum(r));
 end
 
 % Set the simulation parameter ui elements either enabled or disabled
