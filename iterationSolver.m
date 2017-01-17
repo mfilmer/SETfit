@@ -454,7 +454,7 @@ function iterationSolver(measuredZ, simZ, limits, startingParams, tab, simData_p
     function updateDisplay()
         semilogy(fitAxis,xs,history.fit);
         xlabel(fitAxis,'Iterations');
-        ylabel(fitAxis, 'Squares');
+        ylabel(fitAxis, 'Error');
         
         xlabel(cgAxis, 'Iterations');
         yyaxis(cgAxis, 'left');

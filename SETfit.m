@@ -6,7 +6,9 @@ function SETfit()
     % Or if it is on your system's path you can just use
     % python_path = 'python.exe';
     % I have a nonstandard install location, this should be changed for
-    % nearly anyone who wants to use this.
+    % nearly anyone who wants to use this. You may have to change
+    % python_path in iterationSolver.m, although it isn't at the top of the
+    % file.
     python_path = 'C:\Python27_32\python.exe';
     
     %% System Parameters
@@ -517,7 +519,7 @@ function SETfit()
         oldSim_cg = simLabelBox(oldSimParamsPanel, 'Cg', 'aF', [55, 9, 35, 20]);
         oldSim_cs = simLabelBox(oldSimParamsPanel, 'Cs', 'aF', [125, 49, 35, 20]);
         oldSim_cd = simLabelBox(oldSimParamsPanel, 'Cd', 'aF', [125, 29, 35, 20]);
-        oldSim_squ = simLabelBox(oldSimParamsPanel, 'Squ', '', [125, 9, 35, 20]);
+        oldSim_squ = simLabelBox(oldSimParamsPanel, 'Err', '', [125, 9, 35, 20]);
         oldSim_gs = simLabelBox(oldSimParamsPanel, 'Gs', 'uS', [195, 49, 35, 20]);
         oldSim_gd = simLabelBox(oldSimParamsPanel, 'Gd', 'uS', [195, 29, 35, 20]);
         copySimButton = uicontrol(oldSimParamsPanel, 'Style', 'pushbutton', ...
