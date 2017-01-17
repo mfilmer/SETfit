@@ -1253,7 +1253,7 @@ function SETfit()
             numVdspoints ' ' Cs ' ' Cd ' ' Gs ' ' Gd ' ' num_e ' '...
             vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' ' fullfile(simData_path, datfile)];
         [~,result]=system(command);
-        disp(['Simulation Output: ' result])
+        %fprintf(['Simulation Output: \n' result]);
         Z = load(fullfile(simData_path, datfile));
         
         handleNewSimData(Z, tab, filename);
