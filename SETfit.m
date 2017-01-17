@@ -215,6 +215,7 @@ function SETfit()
             
             % Replot now that we have everything in order
             refreshDataPlot()
+            enableDisableFitCheckbox();
         end
         
     else        % Set up some default values for some of the parameters
@@ -519,6 +520,9 @@ function SETfit()
         oldSim_squ = simLabelBox(oldSimParamsPanel, 'Squ', '', [125, 9, 35, 20]);
         oldSim_gs = simLabelBox(oldSimParamsPanel, 'Gs', 'uS', [195, 49, 35, 20]);
         oldSim_gd = simLabelBox(oldSimParamsPanel, 'Gd', 'uS', [195, 29, 35, 20]);
+        copySimButton = uicontrol(oldSimParamsPanel, 'Style', 'pushbutton', ...
+            'Units', 'pixels', 'Position', [150,9,50,20], 'String', 'Copy', ...
+            'Callback', @copyOldSimCB);
         
         % Create simulation parameter panel and elements
         simParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
@@ -807,6 +811,8 @@ function SETfit()
     % Automatically calculate the gate capacitancen from plotted data
     function autoFitCgCB(~,~)
         autoFitCg();
+        
+        enableDisableFitCheckbox();
     end
     
     function autoFitCg()
@@ -826,6 +832,7 @@ function SETfit()
             case 'Cd'
                 autoFitC('Cd');
         end
+        enableDisableFitCheckbox();
     end
     
     function autoFitC(tag)
@@ -923,6 +930,7 @@ function SETfit()
         setBox(h.sim_gdBox, Gd);
         
         enableDisableRunButton(h);
+        enableDisableFitCheckbox();
         
         % Run the simulation
         runSim(thisTab);
@@ -1112,6 +1120,30 @@ function SETfit()
         copyBox(csBox, h.sim_csBox);
         copyBox(cdBox, h.sim_cdBox);
         copyBox(offsetBox, h.sim_offsetBox);
+        
+        % Copy data but only if something has been entered into that box
+        function copyBox(src, dest)
+            if ~strcmp(src.String, '')
+                setBox(dest, src.UserData.value);
+            end
+        end
+        
+        enableDisableRunButton(h);
+    end
+    
+    function copyOldSimCB(src,~)
+        % Copy data into currently active tab
+        thisTab = src.Parent.Parent.Parent;
+        h = thisTab.UserData.h;
+        
+        % Copy over all the data we need
+        copyBox(h.oldSim_cg, h.sim_cgBox);
+        copyBox(h.oldSim_cs, h.sim_csBox);
+        copyBox(h.oldSim_cd, h.sim_cdBox);
+        copyBox(h.oldSim_offset, h.sim_offsetBox);
+        copyBox(h.oldSim_temp, h.sim_tempBox);
+        copyBox(h.oldSim_gs, h.sim_gsBox);
+        copyBox(h.oldSim_gd, h.sim_gdBox);
         
         % Copy data but only if something has been entered into that box
         function copyBox(src, dest)
