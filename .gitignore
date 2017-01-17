@@ -3,6 +3,8 @@
 testData/*
 settings.mat
 mainsettings.mat
+sim1.dat
+sim2.dat
 */simulations/*
 projects/*
 SETsimulator/*
