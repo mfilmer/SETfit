@@ -513,22 +513,22 @@ function SETfit()
         
         % Create a pannel to hold the previously ran simulation parameters
         oldSimParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
-            'Position', [10,10,230,bottomMargin-15], 'Title', 'Current Simulation');
-        oldSim_temp = simLabelBox(oldSimParamsPanel, 'T', 'K', [55, 49, 35, 20]);
-        oldSim_offset = simLabelBox(oldSimParamsPanel, 'Off', 'mV', [55, 29, 35, 20]);
-        oldSim_cg = simLabelBox(oldSimParamsPanel, 'Cg', 'aF', [55, 9, 35, 20]);
+            'Position', [10,10,240,bottomMargin-15], 'Title', 'Current Simulation');
+        oldSim_temp = simLabelBox(oldSimParamsPanel, 'T', 'K', [50, 49, 35, 20]);
+        oldSim_offset = simLabelBox(oldSimParamsPanel, 'Off', 'mV', [50, 29, 35, 20]);
+        oldSim_cg = simLabelBox(oldSimParamsPanel, 'Cg', 'aF', [50, 9, 35, 20]);
         oldSim_cs = simLabelBox(oldSimParamsPanel, 'Cs', 'aF', [125, 49, 35, 20]);
         oldSim_cd = simLabelBox(oldSimParamsPanel, 'Cd', 'aF', [125, 29, 35, 20]);
-        oldSim_squ = simLabelBox(oldSimParamsPanel, 'Err', '', [125, 9, 35, 20]);
-        oldSim_gs = simLabelBox(oldSimParamsPanel, 'Gs', 'uS', [195, 49, 35, 20]);
-        oldSim_gd = simLabelBox(oldSimParamsPanel, 'Gd', 'uS', [195, 29, 35, 20]);
-        copySimButton = uicontrol(oldSimParamsPanel, 'Style', 'pushbutton', ...
-            'Units', 'pixels', 'Position', [150,9,50,20], 'String', 'Copy', ...
+        oldSim_squ = simLabelBox(oldSimParamsPanel, 'Err', '', [135, 9, 35, 20]);
+        oldSim_gs = simLabelBox(oldSimParamsPanel, 'Gs', 'uS', [200, 49, 35, 20]);
+        oldSim_gd = simLabelBox(oldSimParamsPanel, 'Gd', 'uS', [200, 29, 35, 20]);
+        uicontrol(oldSimParamsPanel, 'Style', 'pushbutton', ...
+            'Units', 'pixels', 'Position', [180,9,50,20], 'String', 'Copy', ...
             'Callback', @copyOldSimCB);
         
         % Create simulation parameter panel and elements
         simParamsPanel = uipanel(simSettingsPanel, 'Units', 'pixels', ...
-            'Position', [250,10,335,bottomMargin-15], 'Title', 'Next Simulation');
+            'Position', [260,10,325,bottomMargin-15], 'Title', 'Next Simulation');
         sim_cgBox = simEntryBox(simParamsPanel, 'Cg', 'aF', [100, 44, 35, 20]);
         sim_csBox = simEntryBox(simParamsPanel, 'Cs', 'aF', [185, 44, 35, 20]);
         sim_cdBox = simEntryBox(simParamsPanel, 'Cd', 'aF', [185, 14, 35, 20]);
@@ -651,7 +651,7 @@ function SETfit()
     
     function dataHandle = simLabelBox(parent, label, units, pVec)
         % Constants
-        lw = 50;
+        lw = 46;
         h = 20;
         lo = -3;
         
