@@ -1,4 +1,4 @@
-function [finalZ, finalParams] = iteratorLauncher(measuredZ, simFile, limits, startingParams)
+function iteratorLauncher(measuredZ, simFile, limits, startingParams, tab, simData_path)
     fig = dialog('Position', [500,200,100,250]);
     fig.MenuBar = 'none';
     
@@ -55,6 +55,6 @@ function [finalZ, finalParams] = iteratorLauncher(measuredZ, simFile, limits, st
         
         delete(src.Parent);
         
-        [finalZ, finalParams] = iterationSolver(measuredZ, simZ, limits, startingParams);
+        iterationSolver(measuredZ, simZ, limits, startingParams, tab, simData_path);
     end
 end

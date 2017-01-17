@@ -83,6 +83,7 @@ function SETfit()
         'Position', [figCenter-40-10, figHeight-25, 40, 20], 'HorizontalAlignment', 'left', ...
         'String', '1', 'Callback', @dataFileFactorCB);
     factorTextBox.UserData.value = 1;
+    factorTextBox.UserData.factor = 1;
     
     % Create the data plot
     dataAxis = axes('Parent', dataPanel, 'Visible', 'on', ...
@@ -173,7 +174,14 @@ function SETfit()
     if isfield(settings, 'measuredDataFile')
         measuredDataFile = settings.measuredDataFile;
         if ~strcmp(measuredDataFile,'') && ~isempty(dir(fullfile(project_path, measuredDataFile)))
-            measuredData = load(fullfile(project_path, measuredDataFile));
+            
+            if isfield(settings, 'dataFactor')
+                setBox(factorTextBox, settings.dataFactor);
+            else
+                settings.dataFactor = 1;
+            end
+            
+            measuredData = load(fullfile(project_path, measuredDataFile)) * settings.dataFactor;
             
             % Back up the settings because plotRawMeasuredData() changes them
             settingsBackup = settings;
@@ -219,6 +227,7 @@ function SETfit()
         settings.zmin = 0;
         settings.zmax = 1;
         settings.zfactor = 1e-6;
+        settings.dataFactor = 1;
     end
     
     %% Load existing simulations from the folder. If there is none, create an empty tab
@@ -788,7 +797,7 @@ function SETfit()
         end
         
         dataFileName.String = FileName;
-        Z = importdata(fullfile(PathName, FileName)) * factorTextBox.UserData.value;
+        Z = importdata(fullfile(PathName, FileName)) * settings.dataFactor;
         plotRawMeasuredData(Z);
         syncZAxis();
         
@@ -937,7 +946,7 @@ function SETfit()
                                 'offset', h.oldSim_offset.UserData.value, ...
                                 'T', h.oldSim_temp.UserData.value);
         
-        [finalZ, finalParams] = iteratorLauncher(dataAxis.UserData.Z, simFile, limits, startingParams);
+        iteratorLauncher(dataAxis.UserData.Z, simFile, limits, startingParams, tab, simData_path);
     end
     
     % Recalculate z axis limits based on data
@@ -1241,6 +1250,8 @@ function SETfit()
             if ~strcmp(offsetBox.String, '')
                 settings.offset = offsetBox.UserData.value;
             end
+            
+            settings.dataFactor = factorTextBox.UserData.value;
             
             % Save the main settings
             save('mainsettings.mat', '-struct', 'mainsettings');

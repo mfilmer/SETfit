@@ -1,4 +1,4 @@
-function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startingParams)
+function iterationSolver(measuredZ, simZ, limits, startingParams, tab, simData_path)
     
     % Order of solving:
     % Gs and Gd Together, proportionally
@@ -9,21 +9,21 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
     % T
     
     %% Create Window
-    figWidth = 1200;      % Pixels
+    figWidth = 600;      % Pixels
     figHeight = 610;     % Pixels
-    figCenter = figWidth/2;
+    %figCenter = figWidth/2;
     fig = figure('Position', [125,20,figWidth,figHeight]);
     fig.MenuBar = 'none';
-    %fig.CloseRequestFcn = @figureCloseCB;
+    fig.CloseRequestFcn = @figureCloseCB;
     
     % Create the main panels
     bottomMargin = 40;         % Pixels
-    dataPanel = uipanel(fig, 'Units', 'pixels', ...
-        'Position', [0,bottomMargin,figCenter,figHeight-bottomMargin-30]);
+    %dataPanel = uipanel(fig, 'Units', 'pixels', ...
+    %    'Position', [0,bottomMargin,figCenter,figHeight-bottomMargin-30]);
     settingsPanel = uipanel(fig, 'Units', 'pixels', ...
         'Position', [0,0,figWidth,bottomMargin]);
     simTabGroup = uitabgroup('Parent', fig, 'Units', 'pixels', ...
-        'Position', [figCenter,bottomMargin,figCenter,figHeight-bottomMargin]);
+        'Position', [0,bottomMargin,figWidth,figHeight-bottomMargin]);
     
     % Create tabs
     fitTab = uitab('Parent', simTabGroup, 'Title', 'Fit');
@@ -39,19 +39,14 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
     tAxis = axes('Parent', tTab, 'OuterPosition', [0,0,1,1]);
     
     % Create main plot axis
-    dataAxis = axes('Parent', dataPanel, 'Visible', 'on', ...
-        'OuterPosition', [0,0,1,1]);
+    %dataAxis = axes('Parent', dataPanel, 'Visible', 'on', ...
+    %    'OuterPosition', [0,0,1,1]);
+    dataAxis = tab.UserData.h.axis;
     xs = linspace(limits(1)*1e3,limits(2)*1e3,101);
     ys = linspace(limits(3)*1e3,limits(4)*1e3,101);
     [X,Y] = meshgrid(xs,ys);
-    pcolor(dataAxis, X,Y,simZ*1e6);
-    shading(dataAxis, 'interp');
-    xlabel('V_G [mV]');
-    ylabel('V_D [mV]');
-    h = colorbar(dataAxis);
-    ylabel(h, 'G [uS]');
-    colormap jet;
-    caxis(dataAxis, limits(5:6)*1e6);
+    bestZ = simZ;
+    updateSimPlot();
     
     % Current value labels
     boxWidth = 30;
@@ -73,6 +68,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
     setBox(tBox, startingParams.T);
     
     % Other initial setup
+    h = tab.UserData.h;
     simFile = tempname;
     bestParams = startingParams;
     testParams = startingParams;
@@ -85,12 +81,14 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
     tFactor = startingFactor; tMomentum = false;
     offsetFactor = startingFactor; offsetMomentum = false;
     
+    % Disable simulation controls in the main window
+    enableDisableSimParams(h, 'off');
+    
     
     % Simulate initial parameters
     %bestZ = runSim(startingParams);
     
     % Initial parameters were passed in
-    bestZ = simZ;
     bestSqu = calcSquares(measuredZ*1e6, bestZ*1e6);
     setBox(fitBox, bestSqu);
     disp(['Starting fit: ' num2str(bestSqu,3)]);
@@ -99,6 +97,8 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
         'offset',bestParams.offset,'gs',bestParams.Gs,'gd',bestParams.Gd);
     
     % Main loop
+    figClosed = false;
+    functionRunning = true;
     while (startingParams.fitG && abs(gCorrFactor) > 0.0001) || ...
             (startingParams.fitG && abs(gUnCorrFactor) > 0.0001) || ...
             (startingParams.fitOffset && abs(offsetFactor) > 0.0001) || ...
@@ -106,6 +106,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             (startingParams.fitCs && abs(csFactor) > 0.0001) || ...
             (startingParams.fitCd && abs(cdFactor) > 0.0001) || ...
             (startingParams.fitT && abs(tFactor) > 0.0001)
+        
         % Optimize Gs and Gd together
         if startingParams.fitG && abs(gCorrFactor) > 0.0001
             updateGCorr = false;
@@ -113,8 +114,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             testParams.Gd = bestParams.Gd * (1+gCorrFactor);
             testZ = runSim(testParams, limits);
             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             gsSlope = (testSqu - bestSqu)/(gCorrFactor*bestParams.Gs);
-            %             gdSlope = (testSqu - bestSqu)/(gCorrFactor*bestParams.Gd);
+            
             if testSqu < bestSqu
                 bestSqu = testSqu;
                 bestZ = testZ;
@@ -124,32 +124,15 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             end
             
             testParams = bestParams;
-            %             testParams.Gs = testParams.Gs - testSqu/(gsSlope);
-            %             testParams.Gd = testParams.Gd - testSqu/(gdSlope);
-            %             testZ = runSim(testParams, limits);
-            %             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             if testSqu < bestSqu
-            %                 bestSqu = testSqu;
-            %                 bestZ = testZ;
-            %                 bestParams = testParams;
-            %                 updateGCorr = true;
-            %             end
             
             disp(['Gs & Gd together fit: ' num2str(bestSqu, 3)]);
             disp(['gCorrFactor: ' num2str(gCorrFactor, 3)]);
             disp(['Gs: ' num2str(bestParams.Gs*1e6,3)]);
             disp(['Gd: ' num2str(bestParams.Gd*1e6,3)]);
-            pcolor(dataAxis, X,Y,bestZ*1e6);
-            shading(dataAxis, 'interp');
-            xlabel('V_G [mV]');
-            ylabel('V_D [mV]');
-            h = colorbar(dataAxis);
-            ylabel(h, 'G [uS]');
-            colormap jet;
-            caxis(dataAxis, limits(5:6)*1e6);
-            setBox(gsBox, bestParams.Gs);
-            setBox(gdBox, bestParams.Gd);
-            setBox(fitBox, bestSqu);
+            updateSimPlot();
+            setBox(gsBox, bestParams.Gs); setBox(h.oldSim_gs, bestParams.Gs);
+            setBox(gdBox, bestParams.Gd); setBox(h.oldSim_gd, bestParams.Gd);
+            setBox(fitBox, bestSqu);      setBox(h.oldSim_squ, bestSqu);
             drawnow;
             
             if ~updateGCorr
@@ -161,6 +144,9 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
                 gCorrMomentum = false;
             end
         end
+        if figClosed
+            break;
+        end
         
         
         % Optimize Gs and Gd separate
@@ -170,8 +156,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             testParams.Gd = bestParams.Gd * (1-gUnCorrFactor);
             testZ = runSim(testParams, limits);
             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             gsSlope = (testSqu - bestSqu)/(gUnCorrFactor*bestParams.Gs);
-            %             gdSlope = (testSqu - bestSqu)/(gUnCorrFactor*testParams.Gd);
+            
             if testSqu < bestSqu
                 bestSqu = testSqu;
                 bestZ = testZ;
@@ -181,32 +166,15 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             end
             
             testParams = bestParams;
-            %             testParams.Gs = testParams.Gs - testSqu/(gsSlope);
-            %             testParams.Gd = testParams.Gd + testSqu/(gdSlope);
-            %             testZ = runSim(testParams, limits);
-            %             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             if testSqu < bestSqu
-            %                 bestSqu = testSqu;
-            %                 bestZ = testZ;
-            %                 bestParams = testParams;
-            %                 updateGUnCorr = true;
-            %             end
             
             disp(['Gs & Gd separate fit: ' num2str(bestSqu, 3)]);
             disp(['gUnCorrFactor: ' num2str(gUnCorrFactor,3)]);
             disp(['Gs: ' num2str(bestParams.Gs*1e6,3)]);
             disp(['Gd: ' num2str(bestParams.Gd*1e6,3)]);
-            pcolor(dataAxis, X,Y,bestZ*1e6);
-            shading(dataAxis, 'interp');
-            xlabel('V_G [mV]');
-            ylabel('V_D [mV]');
-            h = colorbar(dataAxis);
-            ylabel(h, 'G [uS]');
-            colormap jet;
-            caxis(dataAxis, limits(5:6)*1e6);
-            setBox(gsBox, bestParams.Gs);
-            setBox(gdBox, bestParams.Gd);
-            setBox(fitBox, bestSqu);
+            updateSimPlot();
+            setBox(gsBox, bestParams.Gs); setBox(h.oldSim_gs, bestParams.Gs);
+            setBox(gdBox, bestParams.Gd); setBox(h.oldSim_gd, bestParams.Gd);
+            setBox(fitBox, bestSqu);      setBox(h.oldSim_squ, bestSqu);
             drawnow;
             
             if ~updateGUnCorr
@@ -217,6 +185,9 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
                 end
                 gUnCorrMomentum = false;
             end
+        end
+        if figClosed
+            break;
         end
         
         % Optimize Offset
@@ -229,7 +200,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             end
             testZ = runSim(testParams, limits);
             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             slope = (testSqu - bestSqu)/(offsetFactor*bestParams.offset);
+            
             if testSqu < bestSqu
                 bestSqu = testSqu;
                 bestZ = testZ;
@@ -239,29 +210,13 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             end
             
             testParams = bestParams;
-            %             testParams.offset = testParams.offset - testSqu/(slope);
-            %             testZ = runSim(testParams, limits);
-            %             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             if testSqu < bestSqu
-            %                 bestSqu = testSqu;
-            %                 bestZ = testZ;
-            %                 bestParams = testParams;
-            %                 updateOffset = true;
-            %             end
             
             disp(['Offset fit: ' num2str(bestSqu, 3)]);
             disp(['offsetFactor: ' num2str(offsetFactor,3)]);
             disp(['Offset: ' num2str(bestParams.offset*1e3,3)]);
-            pcolor(dataAxis, X,Y,bestZ*1e6);
-            shading(dataAxis, 'interp');
-            xlabel('V_G [mV]');
-            ylabel('V_D [mV]');
-            h = colorbar(dataAxis);
-            ylabel(h, 'G [uS]');
-            colormap jet;
-            caxis(dataAxis, limits(5:6)*1e6);
-            setBox(offsetBox, bestParams.offset);
-            setBox(fitBox, bestSqu);
+            updateSimPlot();
+            setBox(offsetBox, bestParams.offset); setBox(h.oldSim_offset, bestParams.offset);
+            setBox(fitBox, bestSqu);              setBox(fitBox, bestSqu);
             drawnow;
             
             if ~updateOffset
@@ -273,6 +228,9 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
                 offsetMomentum = false;
             end
         end
+        if figClosed
+            break;
+        end
         
         % Optimize Cg
         if startingParams.fitCg && abs(cgFactor) > 0.0001
@@ -280,7 +238,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             testParams.Cg = bestParams.Cg * (1+cgFactor);
             testZ = runSim(testParams, limits);
             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             slope = (testSqu - bestSqu)/(cgFactor*bestParams.Cg);
+            
             if testSqu < bestSqu
                 bestSqu = testSqu;
                 bestZ = testZ;
@@ -290,29 +248,13 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             end
             
             testParams = bestParams;
-            %             testParams.Cg = testParams.Cg - testSqu/(slope);
-            %             testZ = runSim(testParams, limits);
-            %             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             if testSqu < bestSqu
-            %                 bestSqu = testSqu;
-            %                 bestZ = testZ;
-            %                 bestParams = testParams;
-            %                 updateCg = true;
-            %             end
             
             disp(['Cg fit: ' num2str(bestSqu, 3)]);
             disp(['cgFactor: ' num2str(cgFactor,3)]);
             disp(['Cg: ' num2str(bestParams.Cg*1e18,3)]);
-            pcolor(dataAxis, X,Y,bestZ*1e6);
-            shading(dataAxis, 'interp');
-            xlabel('V_G [mV]');
-            ylabel('V_D [mV]');
-            h = colorbar(dataAxis);
-            ylabel(h, 'G [uS]');
-            colormap jet;
-            caxis(dataAxis, limits(5:6)*1e6);
-            setBox(cgBox, bestParams.Cg);
-            setBox(fitBox, bestSqu);
+            updateSimPlot();
+            setBox(cgBox, bestParams.Cg); setBox(h.oldSim_cg, bestParams.Cg);
+            setBox(fitBox, bestSqu);      setBox(h.oldSim_squ, bestSqu);
             drawnow;
             
             if ~updateCg
@@ -324,6 +266,9 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
                 cgMomentum = false;
             end
         end
+        if figClosed
+            break;
+        end
         
         % Optimize Cs
         if startingParams.fitCs && abs(csFactor) > 0.0001
@@ -331,7 +276,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             testParams.Cs = bestParams.Cs * (1+csFactor);
             testZ = runSim(testParams, limits);
             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             slope = (testSqu - bestSqu)/(csFactor*bestParams.Cs);
+            
             if testSqu < bestSqu
                 bestSqu = testSqu;
                 bestZ = testZ;
@@ -341,29 +286,13 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             end
             
             testParams = bestParams;
-            %             testParams.Cs = testParams.Cs - testSqu/(slope);
-            %             testZ = runSim(testParams, limits);
-            %             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             if testSqu < bestSqu
-            %                 bestSqu = testSqu;
-            %                 bestZ = testZ;
-            %                 bestParams = testParams;
-            %                 updateCs = true;
-            %             end
             
             disp(['Cs fit: ' num2str(bestSqu, 3)]);
             disp(['csFactor: ' num2str(csFactor,3)]);
             disp(['Cs: ' num2str(bestParams.Cs*1e18,3)]);
-            pcolor(dataAxis, X,Y,bestZ*1e6);
-            shading(dataAxis, 'interp');
-            xlabel('V_G [mV]');
-            ylabel('V_D [mV]');
-            h = colorbar(dataAxis);
-            ylabel(h, 'G [uS]');
-            colormap jet;
-            caxis(dataAxis, limits(5:6)*1e6);
-            setBox(csBox, bestParams.Cs);
-            setBox(fitBox, bestSqu);
+            updateSimPlot();
+            setBox(csBox, bestParams.Cs); setBox(h.oldSim_cs, bestParams.Cs);
+            setBox(fitBox, bestSqu);      setBox(h.oldSim_squ, bestSqu);
             drawnow;
             
             if ~updateCs
@@ -375,6 +304,9 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
                 csMomentum = false;
             end
         end
+        if figClosed
+            break;
+        end
         
         % Optimize Cd
         if startingParams.fitCd && abs(tFactor) > 0.0001
@@ -382,7 +314,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             testParams.Cd = bestParams.Cd * (1+cdFactor);
             testZ = runSim(testParams, limits);
             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             slope = (testSqu - bestSqu)/(cdFactor*bestParams.Cd);
+            
             if testSqu < bestSqu
                 bestSqu = testSqu;
                 bestZ = testZ;
@@ -392,29 +324,13 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             end
             
             testParams = bestParams;
-            %             testParams.Cd = testParams.Cd - testSqu/(slope);
-            %             testZ = runSim(testParams, limits);
-            %             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             if testSqu < bestSqu
-            %                 bestSqu = testSqu;
-            %                 bestZ = testZ;
-            %                 bestParams = testParams;
-            %                 updateCd = true;
-            %             end
             
             disp(['Cd fit: ' num2str(bestSqu, 3)]);
             disp(['cdFactor: ' num2str(cdFactor, 3)]);
             disp(['Cd: ' num2str(bestParams.Cd*1e18,3)]);
-            pcolor(dataAxis, X,Y,bestZ*1e6);
-            shading(dataAxis, 'interp');
-            xlabel('V_G [mV]');
-            ylabel('V_D [mV]');
-            h = colorbar(dataAxis);
-            ylabel(h, 'G [uS]');
-            colormap jet;
-            caxis(dataAxis, limits(5:6)*1e6);
-            setBox(cdBox, bestParams.Cd);
-            setBox(fitBox, bestSqu);
+            updateSimPlot();
+            setBox(cdBox, bestParams.Cd); setBox(h.oldSim_cd, bestParams.Cd);
+            setBox(fitBox, bestSqu);      setBox(h.oldSim_squ, bestSqu);
             drawnow;
             
             if ~updateCd
@@ -426,6 +342,9 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
                 cdMomentum = false;
             end
         end
+        if figClosed
+            break;
+        end
         
         
         % Optimize T
@@ -434,7 +353,7 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             testParams.T = bestParams.T * (1+tFactor);
             testZ = runSim(testParams, limits);
             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             slope = (testSqu - bestSqu)/(tFactor*bestParams.T);
+            
             if testSqu < bestSqu
                 bestSqu = testSqu;
                 bestZ = testZ;
@@ -444,29 +363,13 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
             end
             
             testParams = bestParams;
-            %             testParams.T = testParams.T - testSqu/(slope);
-            %             testZ = runSim(testParams, limits);
-            %             testSqu = calcSquares(measuredZ*1e6, testZ*1e6);
-            %             if testSqu < bestSqu
-            %                 bestSqu = testSqu;
-            %                 bestZ = testZ;
-            %                 bestParams = testParams;
-            %                 updateT = true;
-            %             end
             
             disp(['T fit: ' num2str(bestSqu, 3)]);
             disp(['tFactor: ' num2str(tFactor,3)]);
             disp(['T: ' num2str(bestParams.T,3)]);
-            pcolor(dataAxis, X,Y,bestZ*1e6);
-            shading(dataAxis, 'interp');
-            xlabel('V_G [mV]');
-            ylabel('V_D [mV]');
-            h = colorbar(dataAxis);
-            ylabel(h, 'G [uS]');
-            colormap jet;
-            caxis(dataAxis, limits(5:6)*1e6);
-            setBox(tBox, bestParams.T);
-            setBox(fitBox, bestSqu);
+            updateSimPlot();
+            setBox(tBox, bestParams.T); setBox(h.oldSim_temp, bestParams.T);
+            setBox(fitBox, bestSqu);    setBox(h.oldSim_squ, bestSqu);
             drawnow;
             
             if ~updateT
@@ -478,8 +381,64 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
                 tMomentum = false;
             end
         end
+        if figClosed
+            break;
+        end
         
-        % Update history and display
+        updateHistory();
+        updateDisplay();
+    end
+    updateHistory();
+    updateDisplay();
+    
+    % Delete old file and replace with newly simulated one
+    oldFilename = tab.UserData.filename;
+    mfile = fullfile(simData_path, [oldFilename '.mat']);
+    datafile = fullfile(simData_path, [oldFilename '.dat']);
+    delete(mfile, datafile);
+    
+    filename = datestr(datetime(), 'yyyymmmdd_HH.MM.SS');
+    datfile = [filename '.dat'];
+    copyfile(simFile, fullfile(simData_path, datfile));
+    tab.UserData.filename = filename;
+    mfile = fullfile(simData_path, [filename '.mat']);
+    
+    h.filenameLabel.String = filename;
+    
+    saveTabFile(mfile, tab, limits);
+    
+    
+    % Re-enable simulation controls
+    enableDisableSimParams(h, 'on');
+    
+    % Mark that the function ended so the figureCloseCB() function works
+    % properly.
+    functionRunning = false;
+    
+    if figClosed
+        delete(fig);
+    end
+    
+    function figureCloseCB(src,~)
+        figClosed = true;
+        
+        if ~functionRunning
+            delete(src);
+        end
+    end
+    
+    function updateSimPlot()
+        pcolor(dataAxis, X,Y,bestZ*1e6);
+        shading(dataAxis, 'interp');
+        xlabel(dataAxis, 'V_G [mV]');
+        ylabel(dataAxis, 'V_D [mV]');
+        cbh = colorbar(dataAxis);
+        ylabel(cbh, 'G [uS]');
+        colormap jet;
+        caxis(dataAxis, limits(5:6)*1e6);
+    end
+    
+    function updateHistory()
         history.fit(end+1) = bestSqu;
         history.cg(end+1) = bestParams.Cg;
         history.cs(end+1) = bestParams.Cs;
@@ -490,7 +449,9 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
         history.gd(end+1) = bestParams.Gd;
         
         xs = 0:(length(history.fit)-1);
-        
+    end
+    
+    function updateDisplay()
         semilogy(fitAxis,xs,history.fit);
         xlabel(fitAxis,'Iterations');
         ylabel(fitAxis, 'Squares');
@@ -519,8 +480,6 @@ function [finalZ, bestParams] = iterationSolver(measuredZ, simZ, limits, startin
         
         drawnow;
     end
-    
-    finalZ = bestZ;
     
     function Z = runSim(P, limits)
         Z = runSimMain(simFile, P.Cg,P.Cs,P.Cd,P.Gs,P.Gd,P.offset,P.T,limits(1),limits(2),limits(3),limits(4));
@@ -578,7 +537,7 @@ end
 function dataHandle = labelBox(parent, label, units, pVec)
     % Constants
     lw = 70;
-    h = 20;
+    lh = 20;
     lo = -3;
     
     % Determine factor
@@ -593,11 +552,11 @@ function dataHandle = labelBox(parent, label, units, pVec)
     % Make label and include units if units isn't an empty string
     if strcmp(units, '')
         uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
-            'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, h], ...
+            'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, lh], ...
             'String', [label ':']);
     else
         uicontrol(parent, 'Style', 'text', 'HorizontalAlignment', 'right', ...
-            'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, h], ...
+            'Units', 'pixels', 'Position', [pVec(1)-lw-2, pVec(2), lw, lh], ...
             'String', [label ' [' units ']' ':']);
     end
     
@@ -605,6 +564,7 @@ function dataHandle = labelBox(parent, label, units, pVec)
     dataHandle.UserData.factor = factor;
     dataHandle.UserData.value = 0;
 end
+
 
 function factor = unitsToFactor(units)
     switch units
@@ -632,4 +592,41 @@ function setBox(h, value, varargin)
     end
     h.UserData.value = value;
     h.String = num2str(value/h.UserData.factor, sigFigs);
+end
+
+% Set the simulation parameter ui elements either enabled or disabled
+% according to the state variable
+function enableDisableSimParams(h, state)
+    h.sim_cgBox.Enable = state;
+    h.sim_csBox.Enable = state;
+    h.sim_cdBox.Enable = state;
+    h.sim_gsBox.Enable = state;
+    h.sim_gdBox.Enable = state;
+    h.sim_offsetBox.Enable = state;
+    h.sim_tempBox.Enable = state;
+    h.runSimButton.Enable = state;
+end
+
+% Save the specified tab's data in an .mat file
+function saveTabFile(mfile, tab, limits)
+    h = tab.UserData.h;
+    
+    data.tabname = tab.Title;
+    
+    data.cg = h.oldSim_cg.UserData.value;
+    data.cs = h.oldSim_cs.UserData.value;
+    data.cd = h.oldSim_cd.UserData.value;
+    data.gs = h.oldSim_gs.UserData.value;
+    data.gd = h.oldSim_gd.UserData.value;
+    data.offset = h.oldSim_offset.UserData.value;
+    data.temp = h.oldSim_temp.UserData.value;
+    
+    data.xmin = limits(1);
+    data.xmax = limits(2);
+    data.ymin = limits(3);
+    data.ymax = limits(4);
+    data.zmin = h.sim_zminBox.UserData.value;
+    data.zmax = h.sim_zmaxBox.UserData.value;   %#ok  it is saved on the next line
+    
+    save(mfile, '-struct', 'data');
 end
