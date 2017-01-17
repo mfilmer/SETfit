@@ -39,6 +39,11 @@ function SETfit()
         mainsettings.project_path = project_path;       %#ok we save this later
     end
     
+    % If this directory doesn't exist, make it
+    if isempty(dir(project_path))
+        mkdir(project_path);
+    end
+    
     % Load project settings file. If there is no settings file create a
     % struct that we can save later. (We want a struct either way)
     if isempty(dir(fullfile(project_path, 'settings.mat')))
