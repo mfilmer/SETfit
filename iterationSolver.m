@@ -309,7 +309,7 @@ function iterationSolver(measuredZ, simZ, limits, startingParams, tab, simData_p
         end
         
         % Optimize Cd
-        if startingParams.fitCd && abs(tFactor) > 0.0001
+        if startingParams.fitCd && abs(cdFactor) > 0.0001
             updateCd = false;
             testParams.Cd = bestParams.Cd * (1+cdFactor);
             testZ = runSim(testParams, limits);
