@@ -11,6 +11,10 @@ function SETfit()
     % file.
     python_path = 'C:\Python27_32\python.exe';
     
+    % Number of extra electrons to simulate. (In addition to the
+    % automatically calculated number).
+    extra_e = 0;
+    
     %% System Parameters
     % Location of the simulator .py file
     simulator_path = 'SETsimulator\guidiamonds.py';
@@ -959,7 +963,8 @@ function SETfit()
                                 'Gs', h.oldSim_gs.UserData.value, ...
                                 'Gd', h.oldSim_gd.UserData.value, ...
                                 'offset', h.oldSim_offset.UserData.value, ...
-                                'T', h.oldSim_temp.UserData.value);
+                                'T', h.oldSim_temp.UserData.value, ...
+                                'extra_e', extra_e);
         
         iteratorLauncher(dataAxis.UserData.Z, simFile, limits, startingParams, tab, simData_path);
     end
@@ -1247,7 +1252,7 @@ function SETfit()
         stop = stop - pShift;
         vg_start = num2str(start * 1e3);   % mV
         vg_end = num2str(stop * 1e3);     % mV
-        num_e = ceil((stop-start)/(period*2)) + 1;
+        num_e = ceil((stop-start)/(period*2)) + 1 + extra_e;
         num_e = num2str(num_e);
         numVgpoints = num2str(101);
         Cg = num2str(Cg);
@@ -1259,7 +1264,7 @@ function SETfit()
         command=[python_path ' ' simulator_path ' ' T ' ' vds_start ' ' vds_end ' ' ...
             numVdspoints ' ' Cs ' ' Cd ' ' Gs ' ' Gd ' ' num_e ' '...
             vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' ' fullfile(simData_path, datfile)];
-        [~,result]=system(command);
+        [~,~]=system(command);
         %fprintf(['Simulation Output: \n' result]);
         Z = load(fullfile(simData_path, datfile));
         
