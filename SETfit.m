@@ -1263,7 +1263,7 @@ function SETfit()
         datfile = [filename '.dat'];
         command=[python_path ' ' simulator_path ' ' T ' ' vds_start ' ' vds_end ' ' ...
             numVdspoints ' ' Cs ' ' Cd ' ' Gs ' ' Gd ' ' num_e ' '...
-            vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' ' fullfile(simData_path, datfile)];
+            vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' "' fullfile(simData_path, datfile) '"'];
         [~,~]=system(command);
         %fprintf(['Simulation Output: \n' result]);
         Z = load(fullfile(simData_path, datfile));

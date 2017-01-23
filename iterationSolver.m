@@ -529,7 +529,7 @@ function Z = runSimMain(simFile, Cg,Cs,Cd,Gs,Gd,offset,T,vgs_min,vgs_max,vds_min
     % Run the python simulator
     command=[python_path ' ' simulator_path ' ' T ' ' vds_start ' ' vds_end ' ' ...
         numVdspoints ' ' Cs ' ' Cd ' ' Gs ' ' Gd ' ' num_e ' '...
-        vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' ' simFile];
+        vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' "' simFile '"'];
     [~,~] = system(command);
     Z = load(simFile);
 end
