@@ -309,7 +309,7 @@ function iterationSolver(measuredZ, simZ, limits, startingParams, tab, simData_p
         end
         
         % Optimize Cd
-        if startingParams.fitCd && abs(tFactor) > 0.0001
+        if startingParams.fitCd && abs(cdFactor) > 0.0001
             updateCd = false;
             testParams.Cd = bestParams.Cd * (1+cdFactor);
             testZ = runSim(testParams, limits);
@@ -482,11 +482,11 @@ function iterationSolver(measuredZ, simZ, limits, startingParams, tab, simData_p
     end
     
     function Z = runSim(P, limits)
-        Z = runSimMain(simFile, P.Cg,P.Cs,P.Cd,P.Gs,P.Gd,P.offset,P.T,limits(1),limits(2),limits(3),limits(4));
+        Z = runSimMain(simFile, P.Cg,P.Cs,P.Cd,P.Gs,P.Gd,P.offset,P.T,limits(1),limits(2),limits(3),limits(4),P.extra_e);
     end
 end
 
-function Z = runSimMain(simFile, Cg,Cs,Cd,Gs,Gd,offset,T,vgs_min,vgs_max,vds_min,vds_max)
+function Z = runSimMain(simFile, Cg,Cs,Cd,Gs,Gd,offset,T,vgs_min,vgs_max,vds_min,vds_max,extra_e)
     python_path = 'C:\Python27_32\python.exe';
     simulator_path = 'SETsimulator\guidiamonds.py';
     
@@ -520,7 +520,7 @@ function Z = runSimMain(simFile, Cg,Cs,Cd,Gs,Gd,offset,T,vgs_min,vgs_max,vds_min
     % Vg string conversion
     vg_start = num2str(start * 1e3);   % mV
     vg_end = num2str(stop * 1e3);     % mV
-    num_e = ceil((stop-start)/(period*2)) + 1;
+    num_e = ceil((stop-start)/(period*2)) + 1 + extra_e;
     num_e = num2str(num_e);
     numVgpoints = num2str(101);
     Cg = num2str(Cg);
@@ -529,7 +529,7 @@ function Z = runSimMain(simFile, Cg,Cs,Cd,Gs,Gd,offset,T,vgs_min,vgs_max,vds_min
     % Run the python simulator
     command=[python_path ' ' simulator_path ' ' T ' ' vds_start ' ' vds_end ' ' ...
         numVdspoints ' ' Cs ' ' Cd ' ' Gs ' ' Gd ' ' num_e ' '...
-        vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' ' simFile];
+        vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' "' simFile '"'];
     [~,~] = system(command);
     Z = load(simFile);
 end
