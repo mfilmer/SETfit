@@ -68,6 +68,8 @@ function SETfit()
     fig = figure('Position', [125,20,figWidth,figHeight]);
     fig.MenuBar = 'none';
     fig.CloseRequestFcn = @figureCloseCB;
+    fig.NumberTitle = 'off';
+    fig.Name = project_path;
     
     % Create the main panels
     bottomMargin = 100;         % Pixels
@@ -1247,7 +1249,7 @@ function SETfit()
         stop = stop - pShift;
         vg_start = num2str(start * 1e3);   % mV
         vg_end = num2str(stop * 1e3);     % mV
-        num_e = ceil((stop-start)/(period*2)) + 1;
+        num_e = ceil((stop-start)/(period*2)) + 2;
         num_e = num2str(num_e);
         numVgpoints = num2str(101);
         Cg = num2str(Cg);
@@ -1258,8 +1260,8 @@ function SETfit()
         datfile = [filename '.dat'];
         command=[python_path ' ' simulator_path ' ' T ' ' vds_start ' ' vds_end ' ' ...
             numVdspoints ' ' Cs ' ' Cd ' ' Gs ' ' Gd ' ' num_e ' '...
-            vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' ' fullfile(simData_path, datfile)];
-        [~,result]=system(command);
+            vg_start ' ' vg_end ' ' numVgpoints ' ' Cg ' "' fullfile(simData_path, datfile) '"'];
+        [~,~]=system(command);
         %fprintf(['Simulation Output: \n' result]);
         Z = load(fullfile(simData_path, datfile));
         
