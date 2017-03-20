@@ -17,10 +17,10 @@ function SETfit()
     
     %% System Parameters
     % Location of the simulator .py file
-    simulator_path = 'SETsimulator\guidiamonds.py';
+    simulator_path = fullfile('SETsimulator', 'guidiamonds.py');
     
     % Directory we expect project directories to be in
-    main_project_dir = 'projects\';
+    main_project_dir = ['projects' filesep];
     
     %% Constants
     q = 1.602e-19;          % Coulombs
