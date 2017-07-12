@@ -15,6 +15,10 @@ function SETfit()
     % automatically calculated number).
     extra_e = 0;
     
+    % Resolution of simulation (Number of points in each direction)
+    simResX = 101;
+    simResY = 101;
+    
     %% System Parameters
     % Location of the simulator .py file
     simulator_path = fullfile('SETsimulator', 'guidiamonds.py');
@@ -730,8 +734,8 @@ function SETfit()
         h = tab.UserData.h;
         
         % Plot the new data
-        xs = linspace(settings.xmin/settings.xfactor, settings.xmax/settings.xfactor, 101);
-        ys = linspace(settings.ymin/settings.yfactor, settings.ymax/settings.yfactor, 101);
+        xs = linspace(settings.xmin/settings.xfactor, settings.xmax/settings.xfactor, simResX);
+        ys = linspace(settings.ymin/settings.yfactor, settings.ymax/settings.yfactor, simResY);
         [X,Y] = meshgrid(xs,ys);
         
         pcolor(h.axis, X, Y, Z/settings.zfactor);
@@ -1234,7 +1238,7 @@ function SETfit()
         
         vds_start = num2str(settings.ymin * 1e3);   % mV
         vds_end = num2str(settings.ymax * 1e3);     % mV
-        numVdspoints = num2str(101 + 1);    % Note, for some reason the simulator runs one less point than requested for this parameter
+        numVdspoints = num2str(simResY + 1);    % Note, for some reason the simulator runs one less point than requested for this parameter
         Cs = num2str(h.sim_csBox.UserData.value);
         Cd = num2str(h.sim_cdBox.UserData.value);
         Gs = num2str(h.sim_gsBox.UserData.value/G0);
@@ -1256,7 +1260,7 @@ function SETfit()
         vg_end = num2str(stop * 1e3);     % mV
         num_e = ceil((stop-start)/(period*2)) + 1 + extra_e;
         num_e = num2str(num_e);
-        numVgpoints = num2str(101);
+        numVgpoints = num2str(simResX);
         Cg = num2str(Cg);
         T = num2str(h.sim_tempBox.UserData.value);
         
