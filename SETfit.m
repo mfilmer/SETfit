@@ -27,8 +27,10 @@ function SETfit()
     main_project_dir = ['projects' filesep];
     
     %% Constants
-    q = 1.602e-19;          % Coulombs
-    G0 = 7.7480917346e-5;   % Conductance quantum in Siemens;
+    q = 1.602e-19;          	% Coulombs
+    G0 = (7.7480917346e-5)/2;   % Conductance quantum in Siemens;
+								% Note: it appears that the python simulator expects the value here
+								% even though that value is not the "actual" quantum of conductance of 2q^2/h
     
     %% Create the GUI
     % Prompt the user for the project path
