@@ -491,7 +491,7 @@ function Z = runSimMain(simFile, Cg,Cs,Cd,Gs,Gd,offset,T,vgs_min,vgs_max,vds_min
     simulator_path = 'SETsimulator\guidiamonds.py';
     
     % Constants
-    G0 = 7.7480917346e-5;   % Conductance quantum in Siemens;
+    G0 = (7.7480917346e-5)/2;   % Conductance quantum in Siemens;
     q = 1.602e-19;          % Coulombs
     
     % Vds conversion
